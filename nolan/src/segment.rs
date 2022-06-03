@@ -143,20 +143,20 @@ impl Segment {
     pub fn read_at(&mut self, offset: usize) -> Result<Vec<u8>, String>{
         // This condition is only applied when we're dealing with segment 0, can this be combined below??
         if self.starting_offset == 0 && offset >= usize::from(self.next_offset){
-            println!("Offset {} is out of bounds for file: {}", offset, self.file_name);
+            //println!("Offset {} is out of bounds for file: {}", offset, self.file_name);
             return Err("Offset is out of bounds".to_string());
         } else if offset >= usize::from(self.next_offset - self.starting_offset) {
-            println!("Offset {} is out of bounds for file: {}", offset, self.file_name);
+            //println!("Offset {} is out of bounds for file: {}", offset, self.file_name);
             return Err("Offset is out of bounds".to_string());    
         }
         let (start, total) = self.index.return_entry_details_by_offset(offset);
-        println!("{:?} {:?}", start, total);
+        //println!("{:?} {:?}", start, total);
         let mut buffer = vec![0; total];
         // TODO: error handle this better
         self.log_file.seek(SeekFrom::Start(start)).expect("Unable to seek to that offset");
         // TODO: error handle this better
         self.log_file.read_exact(&mut buffer).expect("Unable to read into buffer");
-        println!("{:?}", buffer);
+        //println!("{:?}", buffer);
         return Ok(buffer);
     }
 

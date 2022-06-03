@@ -133,7 +133,6 @@ impl Commitlog {
     }
 
     pub fn reload_segments(&mut self) {
-        println!("Attempting to reload segments");
         self.reload_current_segment();
         let mut file_map: HashMap<String, String> = HashMap::new();
         let mut new_segments: Vec<String> = Vec::new();
@@ -180,7 +179,6 @@ impl Commitlog {
         }
 
         if new_segments_thing.is_empty() {
-            println!("No new segments found, reload complete");
             return
         }
 

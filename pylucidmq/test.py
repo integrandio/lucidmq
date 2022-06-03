@@ -1,5 +1,4 @@
 import pylucidmq
-import threading
 import time
 
 def test_message():
@@ -29,12 +28,5 @@ def test_consumer():
         print(key.decode("utf-8"))
         print(value.decode("utf-8"))
 
-def threader():
-    x = threading.Thread(target=test_producer)
-    y = threading.Thread(target=test_consumer)
-    x.start()
-    y.start()
 
-#test_producer()
 test_consumer()
-#threader()

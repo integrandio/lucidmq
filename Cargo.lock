@@ -64,7 +64,9 @@ dependencies = [
 name = "lucidmq"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "nolan",
+ "serde",
 ]
 
 [[package]]

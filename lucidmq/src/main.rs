@@ -1,4 +1,4 @@
-use nolan::{Message, Consumer, Producer};
+use lucidmq::{Message, Consumer, Producer};
 use std::thread;
 use std::time::{Duration};
 use std::str;
@@ -9,7 +9,7 @@ fn run_producer() {
     let mut producer: Producer = Producer::new(topic.clone());
     let second = Duration::from_millis(1000);
 
-    for i in 0..500 {
+    for i in 0..100 {
         let key = format!("key{}", i);
         let key_bytes = key.as_bytes();
         let value = format!("value{}", i);
@@ -32,8 +32,7 @@ fn run_consumer() {
 }
 
 fn main() {
-    run_producer();
+    //run_producer();
     run_consumer()
-
 }
 
