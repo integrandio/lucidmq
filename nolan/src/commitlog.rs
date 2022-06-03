@@ -3,6 +3,7 @@ use std::fs;
 use std::sync::atomic::AtomicUsize;
 //use std::sync::{Arc, Mutex};
 use crate::segment::{Segment};
+use crate::cleaner::{Cleaner};
 use std::collections::HashMap;
 
 #[derive(Default)]
@@ -248,6 +249,15 @@ impl Commitlog {
             println!("offset {} does not exist in the commtlog", offset);
             return Err("Offset does not exist in the commitlog".to_string());
         }
+    }
+
+    pub fn test_clean(&mut self) {
+        let cleaner = Cleaner::new(1000);
+        cleaner.clean(&mut self.segments);
+        for seg in &self.segments {
+            println!("{:?}", seg.file_name);
+        }
+        
     }
 }
 

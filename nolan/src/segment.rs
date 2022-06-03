@@ -1,22 +1,23 @@
 use std::io::Write;
 use std::str;
 use std::io::prelude::*;
+use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::SeekFrom;
 use std::path::{Path};
 
-use crate::index;
+use crate::index::Index;
 
 pub struct Segment {
     pub file_name: String,
-    position: u32,
+    pub position: u32,
     max_bytes: u64,
     pub starting_offset: u16,
     pub next_offset: u16,
     pub directory: String,
     log_file: File,
-    index: index::Index
+    index: Index
 }
 
 const LOG_SUFFIX: &str = ".log";
@@ -26,7 +27,7 @@ impl Segment {
     /**
      * Create a new segment with the provided starting offset
      */
-    pub fn new(directory: String, offset: u16) -> Self {
+    pub fn new(directory: String, offset: u16) -> Segment {
         println!("Creating a new segment");
         let log_file_name = Self::create_segment_file_name(directory.clone(), offset, String::from(LOG_SUFFIX));
        
@@ -39,7 +40,7 @@ impl Segment {
         .expect("Unable to create and open file");
 
         let index_file_name = Self::create_segment_file_name(directory.clone(), offset, String::from(INDEX_SUFFIX));
-        let index = index::Index::new(index_file_name);
+        let index = Index::new(index_file_name);
 
         let segment = Segment {
             file_name: log_file_name,
@@ -75,7 +76,7 @@ impl Segment {
         let current_segment_postion: u32 = u32::try_from(file.metadata().unwrap().len()).expect("Unable to convert u int type..");
 
         let index_file_name = Self::create_segment_file_name(directory.clone(), segment_offset, String::from(INDEX_SUFFIX));
-        let mut index = index::Index::new(index_file_name);
+        let mut index = Index::new(index_file_name);
 
         let mut total_entries = index.load_index();
         total_entries = total_entries + segment_offset;
@@ -157,5 +158,22 @@ impl Segment {
         self.log_file.read_exact(&mut buffer).expect("Unable to read into buffer");
         println!("{:?}", buffer);
         return Ok(buffer);
+    }
+
+    /**
+     * Close the log file and the index file, then delete both of these files.
+     */
+    pub fn delete(&self) {
+        self.close();
+        fs::remove_file(&self.file_name).expect("Unable to delete log file.");
+        fs::remove_file(&self.index.file_name).expect("Unable to delete index file.");
+    }
+
+    /**
+     * Closes the files to log and the index.
+     */
+    fn close(&self) {
+        drop(&self.log_file);
+        self.index.close();
     }
 }

@@ -1,4 +1,5 @@
 pub mod commitlog;
+mod cleaner;
 mod index;
 mod segment;
 use serde::{Deserialize, Serialize};
@@ -137,5 +138,9 @@ impl Producer {
 
     pub fn get_topic(&self) -> String {
         return self.topic.clone();
+    }
+
+    pub fn test_clean(&mut self) {
+        self.commitlog.test_clean();
     }
 }

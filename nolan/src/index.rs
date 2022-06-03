@@ -18,7 +18,7 @@ pub struct Entry {
 }
 
 pub struct Index {
-    //path: String,
+    pub file_name: String,
     entries: Vec<Entry>,
     index_file: File
 }
@@ -38,7 +38,7 @@ impl Index {
             .expect(&message);
         let empty_entry_vec = Vec::new();
         let index = Index {
-            //path: index_path,
+            file_name: index_path,
             entries: empty_entry_vec,
             index_file: file
         };
@@ -132,6 +132,13 @@ impl Index {
         //TODO: error handle this correctly
         let total_bytes: usize = usize::try_from(entry.total).expect("Unable to convert from u32 to usize");
         return (start_offset, total_bytes)
+    }
+
+    /**
+     * Close the index file
+     */
+    pub fn close(&self) {
+        drop(&self.index_file);
     }
 
 }
