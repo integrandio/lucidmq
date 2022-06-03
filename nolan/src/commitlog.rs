@@ -10,6 +10,7 @@ use std::collections::HashMap;
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
+    cleaner: Cleaner,
     current_segment_index: AtomicUsize
     //current_segment: Arc<Mutex<usize>>
     //current_segment: Option<Arc<Mutex<Segment>>>
@@ -21,9 +22,11 @@ impl Commitlog {
      */
     pub fn new(path: String) -> Commitlog {
         let vec = Vec::new();
+        let cleaner = Cleaner::new(1000);
         let mut clog = Commitlog {
             directory: path.clone(),
             segments: vec,
+            cleaner: cleaner,
             ..Default::default()
         };
         //TODO: error handle this
@@ -47,7 +50,10 @@ impl Commitlog {
         // Properly error handle this
         let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
         match current_segment.write(data){
-            Ok(_thing) => println!("Successfully wrote to segment"),
+            Ok(_thing) => {
+                println!("Successfully wrote to segment");
+                self.clean();
+            },
             Err(err) => {
                 if err == "Write not possible. Segment log would be greater than max bytes" {
                     self.split();
@@ -251,13 +257,8 @@ impl Commitlog {
         }
     }
 
-    pub fn test_clean(&mut self) {
-        let cleaner = Cleaner::new(1000);
-        cleaner.clean(&mut self.segments);
-        for seg in &self.segments {
-            println!("{:?}", seg.file_name);
-        }
-        
+    pub fn clean(&mut self) {
+        self.cleaner.clean(&mut self.segments);
     }
 }
 

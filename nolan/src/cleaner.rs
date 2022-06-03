@@ -1,5 +1,6 @@
 use crate::segment::Segment;
 
+#[derive(Default)]
 pub struct Cleaner {
     retention_bytes: u64
 }

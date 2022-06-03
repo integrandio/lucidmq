@@ -1,12 +1,12 @@
 # LucidMQ
 
-> :warning: **This project is in Aplpha Stages**: Expect breaking changes
+> :warning: **This project is in Alpha Stage**: Expect breaking changes
+
+---
 
 ## What is LucidMQ
 
 LcuidMQ is a rust-language library that implements a small, fast, self-contained, high-reliability, full-featured, streaming engine. Unlike most other streaming services, LcuidMQ does not have a separate server process. LcuidMQ reads and writes directly to ordinary disk files. Think of LcuidMQ not as a replacement for Kafka or RabbitMQ but as a replacement for fopen() or trying to stream data via SQLite.
-
----
 
 ## Why do you need LucidMQ?
 
@@ -28,23 +28,17 @@ There are many benefits to this approach, including improved performance, reduce
 
 ### Quickly Prototyping or Learning Event Streaming
 
-There are many benifits to using event streaming and aritechtures that use such paradigms. One issue that LucidMQ aims to solve vs other server-client solutions, is quick prototyping and creating environments to learn. Standing up Kafka and RabbitMQ for such small purposes can seem cumbersome and intimidating to some. With an embedded approach to the stream, one can quickly build out the POC or learn the fundamentals before porting the solition over to a distributed model when the time calls for it.
-
----
+There are many benefits to using event streaming and architectures that use such paradigms. One issue that LucidMQ aims to solve vs other server-client solutions, is quick prototyping and creating environments to learn. Standing up Kafka and RabbitMQ for such small purposes can seem cumbersome and intimidating to some. With an embedded approach to the stream, one can quickly build out the POC or learn the fundamentals before porting the solution over to a distributed model when the time calls for it.
 
 ## How to use
 
 There are 2 client libraries avaliable for LucidMQ. There is a native rust library and a python library.
-
----
 
 ## Repo Structure
 
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq          # CLI and rust library
     ├── pylucidmq        # Python client Code
-
----
 
 ## What's Next?
 
@@ -55,8 +49,6 @@ There are 2 client libraries avaliable for LucidMQ. There is a native rust libra
 - Update structure so that consumer offsets are saved
 - Implement use of the topics
 - Implement mutexs
-
----
 
 ## License
 
