@@ -33,5 +33,7 @@ fn run_consumer() {
 
 fn main() {
     run_producer();
+    run_consumer()
+
 }
 
