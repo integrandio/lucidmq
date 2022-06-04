@@ -2,7 +2,7 @@ use nolan::{commitlog::Commitlog};
 use serde::{Deserialize, Serialize};
 use std::str;
 use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::{Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -13,28 +13,25 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(key: &[u8], value: &[u8], timestamp: i64) -> Message {
+    pub fn new(key: &[u8], value: &[u8], timestamp: Option<i64>) -> Message {
+        let message_timestamp: i64;
+        match timestamp {
+            Some(timestamp) => {
+                message_timestamp = timestamp;
+            },
+            None => {
+                message_timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_millis() as i64;
+            }
+        }
         let key_vec = key.to_vec();
         let value_vec = value.to_vec();
         let message = Message {
             key: key_vec,
             value: value_vec,
-            timestamp: timestamp,
-        };
-        return message;
-    }
-
-    pub fn new_without_timestamp(key: &[u8], value: &[u8]) -> Message {
-        let key_vec = key.to_vec();
-        let value_vec = value.to_vec();
-        let timestamp = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_millis() as i64;
-        let message = Message {
-            key: key_vec,
-            value: value_vec,
-            timestamp: timestamp,
+            timestamp: message_timestamp,
         };
         return message;
     }

@@ -26,14 +26,15 @@ impl Cleaner {
             if total_bytes > self.retention_bytes {
                 break;
             }
-            
-            let segment = segments.get(i).unwrap();
+            //TODO: error handle this correctly.
+            let segment = segments.get(i).expect("Unable to get index");
             total_bytes += segment.position as u64;
             segment_postion -=1;
         }
         for _j in 0..segment_postion {
-            let segmet = segments.get_mut(0).unwrap();
-            segmet.delete();
+            //TODO: error handle this correctly
+            let segmet = segments.get_mut(0).expect("Unable to get index");
+            segmet.delete().expect("Unable to delete segment");
             //Remove the first index of the segment
             segments.remove(0);
         }

@@ -26,7 +26,7 @@ There are many benefits to this approach, including improved performance, reduce
 
 ### Developing Distributed Systems
 
-There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
+Persisting state to a distributed system. There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
 
 ### Quickly Prototyping or Learning Event Streaming
 
@@ -49,12 +49,19 @@ There are 2 client libraries avaliable for LucidMQ. There is a native rust libra
 ## What's Next?
 
 - Clean up error handling
-- Implement CLI
-- Implement javascript library
+- Implement tests
+- Implement CLI in the lucidmq sub repo
+- Implement javascript library using web assembly
 - Implement C library
 - Update structure so that consumer offsets are saved
 - Implement use of the topics
-- Implement mutexs
+- Reimplement mutexs, this should exist in the nolan base library? The current implementation would require rewriting the code in every single client library.
+
+- LucidMQ
+--> Base Directory where the topics and commitlogs live.
+--> Topics which is a mapping to the commitlog directory
+--> Consumer Groups
+--> Persisting this information on disk in the case of a crash or if other processes need to interact.
 
 ---
 

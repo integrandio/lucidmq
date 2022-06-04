@@ -14,7 +14,7 @@ fn run_producer() {
         let key_bytes = key.as_bytes();
         let value = format!("value{}", i);
         let value_bytes = value.as_bytes();
-        let mut message = Message::new_without_timestamp(key_bytes, value_bytes); 
+        let mut message = Message::new(key_bytes, value_bytes, None); 
         producer.produce(&message.serialize_message());
         thread::sleep(second);
     };
@@ -32,7 +32,8 @@ fn run_consumer() {
 }
 
 fn main() {
-    //run_producer();
+    env_logger::init();
+    run_producer();
     run_consumer()
 }
 

@@ -1,10 +1,13 @@
 use core::panic;
 use std::fs;
 use std::sync::atomic::AtomicUsize;
+use log::info;
+
 //use std::sync::{Arc, Mutex};
 use crate::segment::{Segment};
 use crate::cleaner::{Cleaner};
 use std::collections::HashMap;
+use crate::nolan_errors::SegmentError;
 
 #[derive(Default)]
 pub struct Commitlog {
@@ -55,7 +58,8 @@ impl Commitlog {
                 self.clean();
             },
             Err(err) => {
-                if err == "Write not possible. Segment log would be greater than max bytes" {
+                let split_err = SegmentError::new("Write not possible. Segment log would be greater than max bytes");
+                if err == split_err {
                     self.split();
                     self.append(data);
                     return;
@@ -102,7 +106,7 @@ impl Commitlog {
             }
         }
         for segment_file in valid_segment_files {
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file);
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file).expect("unable to load segment");
             self.segments.push(loaded_segment);
         }
 
@@ -129,7 +133,7 @@ impl Commitlog {
         let index = self.current_segment_index.get_mut();
         // Properly error handle this
         let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
-        current_segment.reload()
+        current_segment.reload().expect("Unable to reload segment");
     }
 
     pub fn reload_segments(&mut self) {
@@ -184,7 +188,7 @@ impl Commitlog {
 
         for segment in new_segments_thing {
             println!("Adding new segment {}", segment);
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment);
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment).expect("unable to laod segment");
             self.segments.push(loaded_segment);
         }
 
@@ -204,6 +208,7 @@ impl Commitlog {
      * Create a new segment and set the latest segment value to that new segment
      */
     fn split(&mut self) {
+        info!("Spliting commitlog segment");
         // Get the current segment
         let index = self.current_segment_index.get_mut();
         let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
@@ -241,7 +246,8 @@ impl Commitlog {
                     Ok(buffer)
                 }
                 Err(err) => {
-                    if err == "Offset is out of bounds" {
+                    let out_of_bounds = SegmentError::new("offset is out of bounds");
+                    if err == out_of_bounds {
                         return Err("Offset does not exist in the commitlog".to_string());
                     } else {
                         panic!("unexpected error reached")
@@ -255,8 +261,11 @@ impl Commitlog {
         }
     }
 
-    pub fn clean(&mut self) {
+    fn clean(&mut self) {
+        info!("attempting to clean commitlog");
         self.cleaner.clean(&mut self.segments);
+        let latest_segment_index = self.segments.len() - 1;
+        self.current_segment_index = AtomicUsize::new(latest_segment_index);
     }
 }
 
