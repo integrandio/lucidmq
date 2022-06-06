@@ -292,6 +292,13 @@ impl Commitlog {
         let latest_segment_index = self.segments.len() - 1;
         self.current_segment_index = AtomicUsize::new(latest_segment_index);
     }
+
+    pub fn get_oldest_offset(&mut self) -> usize{
+        let oldest_segment = &self.segments[0];
+        let offset = oldest_segment.starting_offset;
+        return usize::from(offset);
+    }
+    
 }
 
 #[cfg(test)]

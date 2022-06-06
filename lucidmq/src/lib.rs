@@ -25,6 +25,10 @@ impl ConsumerGroup {
         };
         return cg;
     }
+
+    pub fn set_offset(&mut self, new_offset: usize) {
+        self.offset = new_offset;
+    }
 }
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
@@ -56,9 +60,9 @@ impl Topic {
         return topic;
     }
 
-    pub fn add_consumer_group(&mut self, consumer_group: String) {
-        let cg = ConsumerGroup::new(consumer_group);
-        self.consumer_groups.push(cg);
+    pub fn add_consumer_group(&mut self, consumer_group: ConsumerGroup) {
+        //let cg = ConsumerGroup::new(consumer_group);
+        self.consumer_groups.push(consumer_group);
     }
 }
 
@@ -111,15 +115,11 @@ impl LucidMQ {
         let found_index = self.check_topics(&topic);
         if found_index >= 0 {
             let usize_index: usize = found_index.try_into().expect("unable to convert");
-            let found_topic = &self.topics[usize_index];
-            println!(
-                "Loading in topic {} with directory {}",
-                found_topic.directory, found_topic.name
-            );
+            let found_topic = &mut self.topics[usize_index];
             let consumer = Consumer::new(found_topic.directory.clone(), found_topic.name.clone());
+
             return consumer;
         } else {
-            println!("directory not found");
             let new_topic = Topic::new(topic, self.base_directory.clone());
             let consumer = Consumer::new(new_topic.directory.clone(), new_topic.name.clone());
             self.topics.push(new_topic);
@@ -158,13 +158,6 @@ impl LucidMQ {
             .expect("Unable to write to file");
     }
 
-    // pub fn load_lucdidmq(base_directory: String) -> LucidMQ {
-    //     let lucidmq_file_path = Path::new(&base_directory).join("lucidmq.meta");
-    //     let file_bytes = fs::read(lucidmq_file_path).expect("Unable to read file into bytes");
-    //     let decoded_lucidmq: LucidMQ =
-    //         bincode::deserialize(&file_bytes).expect("Unable to deserialize message");
-    //     return decoded_lucidmq;
-    // }
 }
 
 pub struct Consumer {
@@ -175,12 +168,12 @@ pub struct Consumer {
 
 impl Consumer {
     pub fn new(directory: String, topic: String) -> Consumer {
-        let cl = Commitlog::new(directory.clone());
-
+        let mut cl = Commitlog::new(directory.clone());
+        let offset = &cl.get_oldest_offset();
         let consumer = Consumer {
             topic: topic,
             commitlog: cl,
-            consumer_offset: 0,
+            consumer_offset: *offset,
         };
 
         return consumer;
@@ -220,6 +213,10 @@ impl Consumer {
 
     pub fn get_topic(&self) -> String {
         return self.topic.clone();
+    }
+
+    pub fn get_offset(&self) -> usize {
+        return self.consumer_offset;
     }
 }
 
