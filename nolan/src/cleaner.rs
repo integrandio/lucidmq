@@ -2,7 +2,7 @@ use crate::segment::Segment;
 
 #[derive(Default)]
 pub struct Cleaner {
-    retention_bytes: u64
+    retention_bytes: u64,
 }
 
 impl Cleaner {
@@ -11,7 +11,7 @@ impl Cleaner {
      */
     pub fn new(bytes_to_retain: u64) -> Cleaner {
         let cleaner = Cleaner {
-            retention_bytes: bytes_to_retain
+            retention_bytes: bytes_to_retain,
         };
         return cleaner;
     }
@@ -29,7 +29,7 @@ impl Cleaner {
             //TODO: error handle this correctly.
             let segment = segments.get(i).expect("Unable to get index");
             total_bytes += segment.position as u64;
-            segment_postion -=1;
+            segment_postion -= 1;
         }
         for _j in 0..segment_postion {
             //TODO: error handle this correctly

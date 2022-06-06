@@ -1,22 +1,21 @@
 use core::panic;
+use log::info;
 use std::fs;
 use std::sync::atomic::AtomicUsize;
-use log::info;
 
 //use std::sync::{Arc, Mutex};
-use crate::segment::{Segment};
-use crate::cleaner::{Cleaner};
-use std::collections::HashMap;
+use crate::cleaner::Cleaner;
 use crate::nolan_errors::SegmentError;
+use crate::segment::Segment;
+use std::collections::HashMap;
 
 #[derive(Default)]
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
     cleaner: Cleaner,
-    current_segment_index: AtomicUsize
-    //current_segment: Arc<Mutex<usize>>
-    //current_segment: Option<Arc<Mutex<Segment>>>
+    current_segment_index: AtomicUsize, //current_segment: Arc<Mutex<usize>>
+                                        //current_segment: Option<Arc<Mutex<Segment>>>
 }
 
 impl Commitlog {
@@ -51,21 +50,25 @@ impl Commitlog {
         }
         let index = self.current_segment_index.get_mut();
         // Properly error handle this
-        let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
-        match current_segment.write(data){
+        let current_segment = self
+            .segments
+            .get_mut(*index)
+            .expect("Unable to get current segment");
+        match current_segment.write(data) {
             Ok(_thing) => {
                 println!("Successfully wrote to segment");
                 self.clean();
-            },
+            }
             Err(err) => {
-                let split_err = SegmentError::new("Write not possible. Segment log would be greater than max bytes");
+                let split_err = SegmentError::new(
+                    "Write not possible. Segment log would be greater than max bytes",
+                );
                 if err == split_err {
                     self.split();
                     self.append(data);
                     return;
                 }
                 panic!("Another error showed up from here!!")
-
             }
         }
     }
@@ -106,7 +109,8 @@ impl Commitlog {
             }
         }
         for segment_file in valid_segment_files {
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file).expect("unable to load segment");
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file)
+                .expect("unable to load segment");
             self.segments.push(loaded_segment);
         }
 
@@ -114,7 +118,8 @@ impl Commitlog {
         if latest_segment_index == 0 {
             return;
         } else {
-            self.segments.sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
+            self.segments
+                .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
             latest_segment_index = latest_segment_index - 1;
             if latest_segment_index > 0 {
                 self.current_segment_index = AtomicUsize::new(latest_segment_index);
@@ -130,9 +135,16 @@ impl Commitlog {
      * Update the most current segment with information.
      */
     fn reload_current_segment(&mut self) {
+        //What do we want to do when reload is called??
+        if self.segments.is_empty() {
+            return;
+        }
         let index = self.current_segment_index.get_mut();
         // Properly error handle this
-        let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
+        let current_segment = self
+            .segments
+            .get_mut(*index)
+            .expect("Unable to get current segment");
         current_segment.reload().expect("Unable to reload segment");
     }
 
@@ -145,9 +157,13 @@ impl Commitlog {
                 if let Ok(entry) = entry {
                     let path = entry.path();
                     if let Some(extension) = path.extension() {
-                        let file_stem = path.file_stem().expect("Unable to get file stem").to_str().unwrap();
+                        let file_stem = path
+                            .file_stem()
+                            .expect("Unable to get file stem")
+                            .to_str()
+                            .unwrap();
                         //let base_file_name = path.to_str().unwrap();
-                        if extension == "log" {                   
+                        if extension == "log" {
                             if file_map.contains_key(file_stem) {
                                 new_segments.push(file_stem.into())
                             } else {
@@ -169,7 +185,10 @@ impl Commitlog {
 
         let mut new_segments_thing: Vec<String> = Vec::new();
         for segment in new_segments {
-            let segment_offset = segment.clone().parse::<u16>().expect("Unable to parse segment base into int.");
+            let segment_offset = segment
+                .clone()
+                .parse::<u16>()
+                .expect("Unable to parse segment base into int.");
             let mut segment_exists = false;
             for existing_segment in &self.segments {
                 if segment_offset == existing_segment.starting_offset {
@@ -183,12 +202,13 @@ impl Commitlog {
         }
 
         if new_segments_thing.is_empty() {
-            return
+            return;
         }
 
         for segment in new_segments_thing {
             println!("Adding new segment {}", segment);
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment).expect("unable to laod segment");
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment)
+                .expect("unable to laod segment");
             self.segments.push(loaded_segment);
         }
 
@@ -196,7 +216,8 @@ impl Commitlog {
         if latest_segment_index == 0 {
             return;
         } else {
-            self.segments.sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
+            self.segments
+                .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
             latest_segment_index = latest_segment_index - 1;
             if latest_segment_index > 0 {
                 self.current_segment_index = AtomicUsize::new(latest_segment_index);
@@ -211,10 +232,13 @@ impl Commitlog {
         info!("Spliting commitlog segment");
         // Get the current segment
         let index = self.current_segment_index.get_mut();
-        let current_segment = self.segments.get_mut(*index).expect("Unable to get current segment");
+        let current_segment = self
+            .segments
+            .get_mut(*index)
+            .expect("Unable to get current segment");
 
         // Get the next offset from current segment and create a new segment with it
-        let next_offset= current_segment.next_offset;
+        let next_offset = current_segment.next_offset;
         let segment = Segment::new(self.directory.clone(), next_offset);
 
         // Update our object with our new segment and details.
@@ -224,7 +248,7 @@ impl Commitlog {
     }
 
     /**
-     * Given an offset, find and read the value from the commitlog for the 
+     * Given an offset, find and read the value from the commitlog for the
      * segment that it is located in.
      */
     pub fn read(&mut self, offset: usize) -> Result<Vec<u8>, String> {
@@ -238,13 +262,14 @@ impl Commitlog {
         }
 
         if let Some(value) = segment_index {
-            let segment = self.segments.get_mut(value).expect("Unable to get current segment");
+            let segment = self
+                .segments
+                .get_mut(value)
+                .expect("Unable to get current segment");
             let search_offset = offset - usize::from(segment.starting_offset);
-            
+
             match segment.read_at(search_offset) {
-                Ok(buffer) => {
-                    Ok(buffer)
-                }
+                Ok(buffer) => Ok(buffer),
                 Err(err) => {
                     let out_of_bounds = SegmentError::new("offset is out of bounds");
                     if err == out_of_bounds {
@@ -253,7 +278,7 @@ impl Commitlog {
                         panic!("unexpected error reached")
                     }
                 }
-            } 
+            }
         } else {
             //return error
             println!("offset {} does not exist in the commtlog", offset);

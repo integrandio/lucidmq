@@ -1,12 +1,15 @@
-use lucidmq::{Message, Consumer, Producer};
+use lucidmq::{LucidMQ, Message};
 use std::thread;
 use std::time::{Duration};
 use std::str;
 
 fn run_producer() {
-    let topic = String::from("../pylucidmq/test");
+    let base_dir = String::from("../test_log");
+    let mut lucidmq = LucidMQ::new(base_dir);
+
+    let mut producer = lucidmq.new_producer("topic1".to_string());
         
-    let mut producer: Producer = Producer::new(topic.clone());
+    //let mut producer: Producer = Producer::new(topic.clone());
     let second = Duration::from_millis(1000);
 
     for i in 0..100 {
@@ -21,8 +24,10 @@ fn run_producer() {
 }
 
 fn run_consumer() {
-    let topic = String::from("../pylucidmq/test");
-    let mut consumer = Consumer::new(topic.clone());
+    let base_dir = String::from("../test_log");
+    let mut lucidmq = LucidMQ::new(base_dir);
+    let mut consumer = lucidmq.new_consumer("topic1".to_string());
+
     let records = consumer.poll(2000);
     for record in records {
         println!("{}", str::from_utf8(&record.key).unwrap());

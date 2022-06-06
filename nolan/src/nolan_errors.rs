@@ -48,3 +48,27 @@ impl Error for SegmentError {
         &self.details
     }
 }
+
+//------------Commitlog Error--------------------
+// #[derive(Debug, PartialEq)]
+// pub struct CommitlogError {
+//     details: String
+// }
+
+// impl CommitlogError {
+//     pub fn new(msg: &str) -> CommitlogError {
+//         CommitlogError{details: msg.to_string()}
+//     }
+// }
+
+// impl fmt::Display for CommitlogError {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         write!(f,"{}",self.details)
+//     }
+// }
+
+// impl Error for CommitlogError {
+//     fn description(&self) -> &str {
+//         &self.details
+//     }
+// }
