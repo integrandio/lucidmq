@@ -196,6 +196,7 @@ dependencies = [
  "bincode",
  "nolan",
  "pyo3",
+ "rand",
  "serde",
 ]
 

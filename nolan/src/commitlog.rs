@@ -1,5 +1,5 @@
 use core::panic;
-use log::info;
+use log::{info, error, warn};
 use std::fs;
 use std::sync::atomic::AtomicUsize;
 
@@ -34,7 +34,7 @@ impl Commitlog {
         //TODO: error handle this
         fs::create_dir_all(path).expect("Unable to create directory");
         clog.load_segments();
-        return clog;
+        clog
     }
 
     /**
@@ -56,7 +56,7 @@ impl Commitlog {
             .expect("Unable to get current segment");
         match current_segment.write(data) {
             Ok(_thing) => {
-                println!("Successfully wrote to segment");
+                info!("Successfully wrote to segment");
                 self.clean();
             }
             Err(err) => {
@@ -176,7 +176,7 @@ impl Commitlog {
                                 file_map.insert(file_stem.into(), "index".to_string());
                             }
                         } else {
-                            println!("extension not found {:?}", extension);
+                            warn!("extension not found {:?}", extension);
                         }
                     }
                 }
@@ -206,7 +206,7 @@ impl Commitlog {
         }
 
         for segment in new_segments_thing {
-            println!("Adding new segment {}", segment);
+            info!("updating a new segment {}", segment);
             let loaded_segment = Segment::load_segment(self.directory.clone(), segment)
                 .expect("unable to laod segment");
             self.segments.push(loaded_segment);
@@ -218,7 +218,7 @@ impl Commitlog {
         } else {
             self.segments
                 .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
-            latest_segment_index = latest_segment_index - 1;
+            latest_segment_index -= 1;
             if latest_segment_index > 0 {
                 self.current_segment_index = AtomicUsize::new(latest_segment_index);
             }
@@ -273,16 +273,15 @@ impl Commitlog {
                 Err(err) => {
                     let out_of_bounds = SegmentError::new("offset is out of bounds");
                     if err == out_of_bounds {
-                        return Err("Offset does not exist in the commitlog".to_string());
+                        Err("Offset does not exist in the commitlog".to_string())
                     } else {
                         panic!("unexpected error reached")
                     }
                 }
             }
         } else {
-            //return error
-            println!("offset {} does not exist in the commtlog", offset);
-            return Err("Offset does not exist in the commitlog".to_string());
+            error!("offset {} does not exist in the commtlog", offset);
+            Err("Offset does not exist in the commitlog".to_string())
         }
     }
 
@@ -296,7 +295,7 @@ impl Commitlog {
     pub fn get_oldest_offset(&mut self) -> usize{
         let oldest_segment = &self.segments[0];
         let offset = oldest_segment.starting_offset;
-        return usize::from(offset);
+        usize::from(offset)
     }
     
 }

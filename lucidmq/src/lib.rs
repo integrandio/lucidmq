@@ -11,31 +11,9 @@ use std::thread;
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
-pub struct ConsumerGroup {
-    name: String,
-    offset: usize,
-}
-
-impl ConsumerGroup {
-    pub fn new(consumer_group_name: String) -> ConsumerGroup {
-        // For now were always starting the consumer group from earliest offset
-        let cg = ConsumerGroup {
-            name: consumer_group_name,
-            offset: 0,
-        };
-        return cg;
-    }
-
-    pub fn set_offset(&mut self, new_offset: usize) {
-        self.offset = new_offset;
-    }
-}
-
-#[derive(Serialize, Deserialize, PartialEq, Debug, Clone)]
 pub struct Topic {
     name: String,
-    directory: String,
-    consumer_groups: Vec<ConsumerGroup>,
+    directory: String
 }
 
 impl Topic {
@@ -48,21 +26,14 @@ impl Topic {
             .map(char::from)
             .collect();
         let new_path = &path.join(directory_name);
-        let consumer_group_vec = Vec::new();
         let topic = Topic {
             name: topic_name,
             directory: new_path
                 .to_str()
                 .expect("unable to convert to string")
                 .to_string(),
-            consumer_groups: consumer_group_vec,
         };
         return topic;
-    }
-
-    pub fn add_consumer_group(&mut self, consumer_group: ConsumerGroup) {
-        //let cg = ConsumerGroup::new(consumer_group);
-        self.consumer_groups.push(consumer_group);
     }
 }
 
@@ -106,7 +77,7 @@ impl LucidMQ {
             let new_topic = Topic::new(topic, self.base_directory.clone());
             let producer = Producer::new(new_topic.directory.clone(), new_topic.name.clone());
             self.topics.push(new_topic);
-            self.persist_lucidmq();
+            self.save();
             return producer;
         }
     }
@@ -123,7 +94,7 @@ impl LucidMQ {
             let new_topic = Topic::new(topic, self.base_directory.clone());
             let consumer = Consumer::new(new_topic.directory.clone(), new_topic.name.clone());
             self.topics.push(new_topic);
-            self.persist_lucidmq();
+            self.save();
             return consumer;
         }
     }
@@ -142,7 +113,7 @@ impl LucidMQ {
         return -1;
     }
 
-    fn persist_lucidmq(&self) {
+    fn save(&self) {
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
         let encoded_data: Vec<u8> =
             bincode::serialize(&self).expect("Unable to encode lucidmq metadata");
@@ -157,7 +128,6 @@ impl LucidMQ {
         file.write_all(&encoded_data)
             .expect("Unable to write to file");
     }
-
 }
 
 pub struct Consumer {

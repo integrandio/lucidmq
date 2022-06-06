@@ -38,11 +38,70 @@ There are many benefits to using event streaming and architectures that use such
 
 There are 2 client libraries avaliable for LucidMQ. There is a native rust library and a python library.
 
-## Repo Structure
+### Rust
+
+```Rust
+use lucidmq::{LucidMQ, Message};
+
+// Create our lucidmq instance
+let mut lucidmq = LucidMQ::new("base_directory".to_string());
+
+// Let's produce message to our message queue
+let mut producer = lucidmq.new_producer("topic1".to_string());
+// Create a message that you want to send.
+// Every message has a key, value and timestamp.
+let key = format!("key{}", 1);
+let value = format!("value{}", 1);
+let mut message = Message::new(key.as_bytes(), value.as_bytes(), None); 
+producer.produce(&message.serialize_message());
+
+// Let's create a consumer to consumer our messages
+let mut consumer = lucidmq.new_consumer("topic1".to_string());
+// Get all the messages for that polling period
+let records = consumer.poll(1000);
+// Print out all of the messages recieved.
+for record in records {
+    println!("{}", str::from_utf8(&record.key).unwrap());
+    println!("{}", str::from_utf8(&record.value).unwrap());
+    println!("{}", record.timestamp);
+}
+```
+
+### Python
+
+```python
+import pylucidmq
+
+#Create our lucidmq instance
+lucidmq = pylucidmq.LucidMQ("../test_log")
+
+#Let's produce message to our message queue
+producer = lucidmq.new_producer("topic1")
+#Create a message that you want to send.
+#Every message has a key, value and timestamp.
+key = "key{0}".format(x).encode()
+value = "value{0}".format(x).encode()
+producer.produce_message(pylucidmq.Message(key, value))
+
+#Let's create a consumer to consumer our messages
+consumer = lucidmq.new_consumer("topic1")
+#Get all the messages for that polling period
+messages = consumer.poll(1000)
+#Print out all of the messages recieved.
+for message in messages:
+    key = bytes(message.key)
+    value = bytes(message.value)
+    print(key.decode("utf-8"))
+    print(value.decode("utf-8"))
+```
+
+### Repo Structure
+
+The repo is made up of a base library written in rust and other client libraries for easily interacting with the logs using other languages.
 
     ├── nolan            # The base library containing code for the commitlog
-    ├── lucidmq          # CLI and rust library
-    ├── pylucidmq        # Python client Code
+    ├── lucidmq          # CLI and Rust Client Library
+    └── pylucidmq        # Python Client Library
 
 ---
 
@@ -53,15 +112,18 @@ There are 2 client libraries avaliable for LucidMQ. There is a native rust libra
 - Implement CLI in the lucidmq sub repo
 - Implement javascript library using web assembly
 - Implement C library
+- Implement consumer groups
 - Update structure so that consumer offsets are saved
-- Implement use of the topics
 - Reimplement mutexs, this should exist in the nolan base library? The current implementation would require rewriting the code in every single client library.
 
-- LucidMQ
+LucidMQ design
+
+```txt
 --> Base Directory where the topics and commitlogs live.
 --> Topics which is a mapping to the commitlog directory
 --> Consumer Groups
 --> Persisting this information on disk in the case of a crash or if other processes need to interact.
+```
 
 ---
 
