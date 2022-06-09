@@ -14,23 +14,17 @@ LcuidMQ is a rust-language library that implements a small, fast, self-contained
 
 ### Embedded devices and the internet of things
 
-Because an SQLite database requires no administration, it works well in devices that must operate without expert human support. SQLite is a good fit for use in cellphones, set-top boxes, televisions, game consoles, cameras, watches, kitchen appliances, thermostats, automobiles, machine tools, airplanes, remote sensors, drones, medical devices, and robots: the "internet of things".
+Because an LcuidMQ database requires no administration, it works well in devices that must operate without expert human support. LcuidMQ is a good fit for use in cellphones, set-top boxes, televisions, game consoles, cameras, watches, kitchen appliances, thermostats, automobiles, machine tools, airplanes, remote sensors, drones, medical devices, and robots: the "internet of things".
 
 Client/server database engines are designed to live inside a lovingly-attended datacenter at the core of the network. LcuidMQ works there too, but LcuidMQ also thrives at the edge of the network, fending for itself while providing fast and reliable data services to applications that would otherwise have dodgy connectivity.
-
-### Application file format
-
-LcuidMQ is often used as the on-disk file format for desktop applications such as version control systems, financial analysis tools, media cataloging and editing suites, CAD packages, record keeping programs, and so forth.
-
-There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
-
-### Developing Distributed Systems
-
-Persisting state to a distributed system. There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
 
 ### Quickly Prototyping or Learning Event Streaming
 
 There are many benefits to using event streaming and architectures that use such paradigms. One issue that LucidMQ aims to solve vs other server-client solutions, is quick prototyping and creating environments to learn. Standing up Kafka and RabbitMQ for such small purposes can seem cumbersome and intimidating to some. With an embedded approach to the stream, one can quickly build out the POC or learn the fundamentals before porting the solution over to a distributed model when the time calls for it.
+
+### Developing Distributed Systems
+
+Persisting state to a distributed system. There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
 
 ---
 

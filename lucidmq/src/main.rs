@@ -1,4 +1,4 @@
-use lucidmq::{LucidMQ, Message};
+use lucidmq::{lucidmq::LucidMQ, message::Message};
 use std::thread;
 use std::time::{Duration};
 use std::str;
@@ -17,8 +17,8 @@ fn run_producer() {
         let key_bytes = key.as_bytes();
         let value = format!("value{}", i);
         let value_bytes = value.as_bytes();
-        let mut message = Message::new(key_bytes, value_bytes, None); 
-        producer.produce(&message.serialize_message());
+        let message = Message::new(key_bytes, value_bytes, None); 
+        producer.produce_message(message);
         thread::sleep(second);
     };
 }

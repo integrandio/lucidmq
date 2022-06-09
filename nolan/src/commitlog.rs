@@ -14,6 +14,7 @@ pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
     cleaner: Cleaner,
+    max_segment_size: u64,
     current_segment_index: AtomicUsize, //current_segment: Arc<Mutex<usize>>
                                         //current_segment: Option<Arc<Mutex<Segment>>>
 }
@@ -29,6 +30,7 @@ impl Commitlog {
             directory: path.clone(),
             segments: vec,
             cleaner: cleaner,
+            max_segment_size: 256,
             ..Default::default()
         };
         //TODO: error handle this
@@ -43,7 +45,7 @@ impl Commitlog {
     pub fn append(&mut self, data: &[u8]) {
         let total_segment = self.segments.len();
         if total_segment == 0 {
-            let segment = Segment::new(self.directory.clone(), 0);
+            let segment = Segment::new(self.directory.clone(), self.max_segment_size, 0);
             //self.current_segment = Some(Arc::new(Mutex::new(&segment)));
             self.segments.push(segment);
             self.current_segment_index = AtomicUsize::new(0);
@@ -150,8 +152,8 @@ impl Commitlog {
 
     pub fn reload_segments(&mut self) {
         self.reload_current_segment();
-        let mut file_map: HashMap<String, String> = HashMap::new();
-        let mut new_segments: Vec<String> = Vec::new();
+        let mut segment_map: HashMap<String, String> = HashMap::new();
+        let mut valid_segments_found: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.directory) {
             for entry in entries {
                 if let Ok(entry) = entry {
@@ -164,16 +166,16 @@ impl Commitlog {
                             .unwrap();
                         //let base_file_name = path.to_str().unwrap();
                         if extension == "log" {
-                            if file_map.contains_key(file_stem) {
-                                new_segments.push(file_stem.into())
+                            if segment_map.contains_key(file_stem) {
+                                valid_segments_found.push(file_stem.into())
                             } else {
-                                file_map.insert(file_stem.into(), "log".to_string());
+                                segment_map.insert(file_stem.into(), "log".to_string());
                             }
                         } else if extension == "index" {
-                            if file_map.contains_key(file_stem) {
-                                new_segments.push(file_stem.into())
+                            if segment_map.contains_key(file_stem) {
+                                valid_segments_found.push(file_stem.into())
                             } else {
-                                file_map.insert(file_stem.into(), "index".to_string());
+                                segment_map.insert(file_stem.into(), "index".to_string());
                             }
                         } else {
                             warn!("extension not found {:?}", extension);
@@ -183,8 +185,8 @@ impl Commitlog {
             }
         }
 
-        let mut new_segments_thing: Vec<String> = Vec::new();
-        for segment in new_segments {
+        let mut segments_to_add: Vec<String> = Vec::new();
+        for segment in valid_segments_found {
             let segment_offset = segment
                 .clone()
                 .parse::<u16>()
@@ -197,15 +199,15 @@ impl Commitlog {
                 }
             }
             if !segment_exists {
-                new_segments_thing.push(segment.clone());
+                segments_to_add.push(segment.clone());
             }
         }
 
-        if new_segments_thing.is_empty() {
+        if segments_to_add.is_empty() {
             return;
         }
 
-        for segment in new_segments_thing {
+        for segment in segments_to_add {
             info!("updating a new segment {}", segment);
             let loaded_segment = Segment::load_segment(self.directory.clone(), segment)
                 .expect("unable to laod segment");
@@ -239,7 +241,7 @@ impl Commitlog {
 
         // Get the next offset from current segment and create a new segment with it
         let next_offset = current_segment.next_offset;
-        let segment = Segment::new(self.directory.clone(), next_offset);
+        let segment = Segment::new(self.directory.clone(), self.max_segment_size, next_offset);
 
         // Update our object with our new segment and details.
         self.segments.push(segment);

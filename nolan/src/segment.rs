@@ -29,7 +29,7 @@ impl Segment {
     /**
      * Create a new segment with the provided starting offset
      */
-    pub fn new(directory: String, offset: u16) -> Segment {
+    pub fn new(directory: String, max_bytes: u64, offset: u16) -> Segment {
         info!("Creating a new segment");
         let log_file_name =
             Self::create_segment_file_name(directory.clone(), offset, String::from(LOG_SUFFIX));
@@ -49,7 +49,7 @@ impl Segment {
         let segment = Segment {
             file_name: log_file_name,
             position: 0,
-            max_bytes: 255,
+            max_bytes: max_bytes,
             starting_offset: offset,
             next_offset: offset,
             directory: directory,

@@ -1,8 +1,16 @@
-name: CI
+name: pylucidmq-ci
 
 on:
   push:
-  pull_request:
+    branches:
+      - 'master'
+    paths:
+      - "pylucidmq/**"
+  workflow_dispatch:
+    branches:
+      - 'master'
+    paths:
+      - "pylucidmq/**"
 
 jobs:
   linux:
