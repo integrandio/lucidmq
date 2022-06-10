@@ -30,4 +30,4 @@ def test_consumer():
         print(value.decode("utf-8"))
 
 test_producer()
-test_consumer()
+#test_consumer()
