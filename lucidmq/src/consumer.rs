@@ -4,27 +4,27 @@ use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::lucidmq::ConsumerGroup;
+use crate::lucidmq::{ConsumerGroup};
 use crate::message::{Message};
+
 
 pub struct Consumer {
     topic: String,
     commitlog: Commitlog,
-    consumer_offset: usize,
-    consumer_group: Arc<ConsumerGroup>
+    consumer_group: Arc<ConsumerGroup>,
+    cb: Box<dyn Fn()>,
 }
 
 impl Consumer {
-    pub fn new(directory: String, topic: String, consumer_group: Arc<ConsumerGroup>) -> Consumer {
-        let mut cl = Commitlog::new(directory.clone());
-        let offset = &cl.get_oldest_offset();
-        let consumer = Consumer {
+    pub fn new(directory: String, topic: String, consumer_group: Arc<ConsumerGroup>, callback: Box<dyn Fn()>) -> Consumer {
+        let cl = Commitlog::new(directory.clone());
+        let mut consumer = Consumer {
             topic: topic,
             commitlog: cl,
-            consumer_offset: *offset,
-            consumer_group: consumer_group
+            consumer_group: consumer_group,
+            cb: callback
         };
-
+        consumer.consumer_group_sync();
         return consumer;
     }
 
@@ -44,14 +44,13 @@ impl Consumer {
             let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
             match self.commitlog.read(n) {
                 Ok(buffer) => {
-                    let thing = Message::deserialize_message(&buffer);
-                    records.push(thing);
-                    //self.consumer_offset = self.consumer_offset + 1;
+                    let message = Message::deserialize_message(&buffer);
+                    records.push(message);
                     self.update_consumer_group_offset();
+                    self.save_info();
                 }
                 Err(err) => {
                     if err == "Offset does not exist in the commitlog" {
-                        //println!("Unable to get value for {}", self.consumer_offset);
                         self.commitlog.reload_segments();
                         thread::sleep(ten_millis);
                         elapsed_duration = start_time.elapsed();
@@ -68,11 +67,23 @@ impl Consumer {
         return self.topic.clone();
     }
 
-    pub fn get_offset(&self) -> usize {
-        return self.consumer_offset;
+    pub fn consumer_group_sync(&mut self) {
+        let oldest_offset = self.commitlog.get_oldest_offset();
+        let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
+        if n < oldest_offset {
+            let new_consumer_group_offset: u32 = oldest_offset.try_into().unwrap();
+            self.consumer_group.offset.store(new_consumer_group_offset, Ordering::SeqCst);
+            self.save_info();
+        }
+        return
     }
 
     pub fn update_consumer_group_offset(&mut self) {
         self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
+        self.save_info();
+    }
+
+    fn save_info(&self) {
+        (self.cb)()
     }
 }
