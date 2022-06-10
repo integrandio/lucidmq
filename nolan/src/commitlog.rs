@@ -185,24 +185,23 @@ impl Commitlog {
             }
         }
 
-        let mut segments_to_add: Vec<String> = Vec::new();
-        for segment in valid_segments_found {
-            let segment_offset = segment
-                .clone()
-                .parse::<u16>()
-                .expect("Unable to parse segment base into int.");
-            let mut segment_exists = false;
-            for existing_segment in &self.segments {
-                if segment_offset == existing_segment.starting_offset {
-                    segment_exists = true;
-                    break;
-                }
-            }
-            if !segment_exists {
-                segments_to_add.push(segment.clone());
-            }
-        }
-
+        let segments_to_add: Vec<String> = valid_segments_found.into_iter()
+                .filter(|segment| {
+                    let segment_offset = segment
+                    .clone()
+                    .parse::<u16>()
+                    .expect("Unable to parse segment base into int.");
+                    let mut segment_exists = false;
+                    for existing_segment in &self.segments {
+                        if segment_offset == existing_segment.starting_offset {
+                            segment_exists = true;
+                            break;
+                        }
+                    }
+                    !segment_exists
+                })
+                .collect();
+                
         if segments_to_add.is_empty() {
             return;
         }
