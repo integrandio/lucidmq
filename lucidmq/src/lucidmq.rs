@@ -82,7 +82,6 @@ impl LucidMQ {
             Ok(bytes) => {
                 let decoded_lucidmq: LucidMQ =
                     bincode::deserialize(&bytes).expect("Unable to deserialize message");
-                //info!("{:?}", decoded_lucidmq);
                 return decoded_lucidmq;
             }
             Err(_err) => {
@@ -113,7 +112,7 @@ impl LucidMQ {
         }
     }
 
-    pub fn new_consumer(&mut self, topic: String, consumer_group_name: String) -> Consumer {
+    pub fn new_consumer(mut self, topic: String, consumer_group_name: String) -> Consumer {
         let found_index = self.check_topics(&topic);
         if found_index >= 0 {
             let usize_index: usize = found_index.try_into().expect("unable to convert");
@@ -124,19 +123,25 @@ impl LucidMQ {
                 found_topic.directory.clone(),
                 found_topic.name.clone(),
                 consumer_cg,
+                Box::new(move || self.save()),
             );
-            info!("Debugging here {:?}", self);
-            self.save();
+            //self.save();
             return consumer;
         } else {
             let user_cg = Arc::new(ConsumerGroup::new(consumer_group_name));
             let mut new_topic = Topic::new(topic, self.base_directory.clone());
             new_topic.consumer_groups.push(user_cg.clone());
-            let consumer =
-                Consumer::new(new_topic.directory.clone(), new_topic.name.clone(), user_cg);
+            let new_directory_name = new_topic.directory.clone();
+            let new_topic_name = new_topic.name.clone();
             self.topics.push(new_topic);
-            info!("Debugging here {:?}", self);
-            self.save();
+            let consumer = Consumer::new(
+                new_directory_name,
+                new_topic_name,
+                user_cg,
+                Box::new(move || self.save()),
+            );
+
+            //self.save();
             return consumer;
         }
     }
@@ -155,7 +160,7 @@ impl LucidMQ {
         return -1;
     }
 
-    pub fn save(&self) {
+    fn save(&self) {
         info!("Saving file...");
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
         let encoded_data: Vec<u8> =
