@@ -1,4 +1,3 @@
-use crate::nolan_errors::SegmentError;
 use log::{error, info};
 use std::fs;
 use std::fs::File;
@@ -10,6 +9,7 @@ use std::path::Path;
 use std::str;
 
 use crate::index::Index;
+use crate::nolan_errors::SegmentError;
 
 pub struct Segment {
     pub file_name: String,
@@ -33,7 +33,6 @@ impl Segment {
         info!("Creating a new segment");
         let log_file_name =
             Self::create_segment_file_name(directory.clone(), offset, String::from(LOG_SUFFIX));
-
         let file = OpenOptions::new()
             .create(true)
             .read(true)

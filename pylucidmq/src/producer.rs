@@ -1,5 +1,5 @@
 use pyo3::{prelude::*};
-use nolan::commitlog::Commitlog;
+use nolan::Commitlog;
 use std::str;
 use std::sync::Mutex;
 use crate::Message;

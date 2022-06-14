@@ -1,4 +1,7 @@
-pub mod lucidmq;
+mod lucidmq;
 mod consumer;
 mod producer;
-pub mod message;
+mod message;
+
+pub use lucidmq::LucidMQ;
+pub use message::Message;

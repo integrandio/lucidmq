@@ -72,3 +72,27 @@ impl Error for SegmentError {
 //         &self.details
 //     }
 // }
+
+//------------Cleaner Error--------------------
+#[derive(Debug, PartialEq)]
+pub struct CleanerError {
+    details: String
+}
+
+impl CleanerError {
+    pub fn new(msg: &str) -> CleanerError {
+        CleanerError{details: msg.to_string()}
+    }
+}
+
+impl fmt::Display for CleanerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f,"{}",self.details)
+    }
+}
+
+impl Error for CleanerError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}

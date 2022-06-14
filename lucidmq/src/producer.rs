@@ -1,4 +1,4 @@
-use nolan::commitlog::Commitlog;
+use nolan::Commitlog;
 use std::sync::Mutex;
 
 use crate::message::Message;
