@@ -1,6 +1,6 @@
 
 use pyo3::{prelude::*};
-use nolan::commitlog::Commitlog;
+use nolan::Commitlog;
 use std::str;
 use std::thread;
 use std::time::{Duration, Instant};

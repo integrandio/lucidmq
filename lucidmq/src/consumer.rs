@@ -1,5 +1,4 @@
-use log::info;
-use nolan::commitlog::Commitlog;
+use nolan::Commitlog;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
 use std::thread;
@@ -16,6 +15,9 @@ pub struct Consumer {
 }
 
 impl Consumer {
+    /**
+     * Initializes a new consumer
+     */
     pub fn new(directory: String, topic: String, consumer_group: Arc<ConsumerGroup>, callback: Box<dyn Fn()>) -> Consumer {
         let cl = Commitlog::new(directory.clone());
         let mut consumer = Consumer {
@@ -24,15 +26,16 @@ impl Consumer {
             consumer_group: consumer_group,
             cb: callback
         };
-        consumer.consumer_group_sync();
+        consumer.consumer_group_initialize();
         return consumer;
     }
 
+    /**
+     * Reads from the commitlog for a set amount of time and returns a vector is messages when complete.
+     */
     pub fn poll(&mut self, timeout: u64) -> Vec<Message> {
         //Let's check if there are any new segments added.
         self.commitlog.reload_segments();
-
-        info!{"{:?}", self.consumer_group};
 
         let timeout_duration = Duration::from_millis(timeout);
         let ten_millis = Duration::from_millis(100);
@@ -47,7 +50,6 @@ impl Consumer {
                     let message = Message::deserialize_message(&buffer);
                     records.push(message);
                     self.update_consumer_group_offset();
-                    self.save_info();
                 }
                 Err(err) => {
                     if err == "Offset does not exist in the commitlog" {
@@ -60,14 +62,22 @@ impl Consumer {
                 }
             };
         }
+        self.save_info();
         return records;
     }
 
+    /**
+     * Returns the topic that the consumer is consuming from.
+     */
     pub fn get_topic(&self) -> String {
         return self.topic.clone();
     }
 
-    pub fn consumer_group_sync(&mut self) {
+    /**
+     * Verifies and fixes if the consumer group is set to something that is older than the oldest offset in the commitlog.
+     * If it is older, it will set it to the oldest possible offset.
+     */
+    fn consumer_group_initialize(&mut self) {
         let oldest_offset = self.commitlog.get_oldest_offset();
         let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
         if n < oldest_offset {
@@ -78,11 +88,16 @@ impl Consumer {
         return
     }
 
+    /**
+     * Updates the consumer_group offset counter by 1.
+     */
     pub fn update_consumer_group_offset(&mut self) {
         self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
-        self.save_info();
     }
 
+    /**
+     * save info calls a callback function which will sync an persis the state.
+     */
     fn save_info(&self) {
         (self.cb)()
     }

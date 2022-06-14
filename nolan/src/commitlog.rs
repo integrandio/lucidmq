@@ -150,6 +150,9 @@ impl Commitlog {
         current_segment.reload().expect("Unable to reload segment");
     }
 
+    /**
+     * Load segments in from the commitlog directory that have not been loaded into memory yet.
+     */
     pub fn reload_segments(&mut self) {
         self.reload_current_segment();
         let mut segment_map: HashMap<String, String> = HashMap::new();
@@ -286,13 +289,23 @@ impl Commitlog {
         }
     }
 
+    /**
+     * clean calls the cleaner to clean up the commitlog directory, it then updates the latest segment pointer.
+     */
     fn clean(&mut self) {
         info!("attempting to clean commitlog");
-        self.cleaner.clean(&mut self.segments);
+        let cleaner_response = self.cleaner.clean(&mut self.segments);
+        let _cleaner_response = match cleaner_response {
+            Ok(_res) => info!("Cleaned commitlog successfully."),
+            Err(_error) => error!("Error occured when cleaning file."),
+        };
         let latest_segment_index = self.segments.len() - 1;
         self.current_segment_index = AtomicUsize::new(latest_segment_index);
     }
 
+    /**
+     * Returns the first offset of the first segment.
+     */
     pub fn get_oldest_offset(&mut self) -> usize{
         let oldest_segment = &self.segments[0];
         let offset = oldest_segment.starting_offset;
