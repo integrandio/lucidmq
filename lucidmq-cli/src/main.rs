@@ -1,13 +1,10 @@
-use lucidmq::{LucidMQ, Message};
-use std::thread;
-use std::time::{Duration};
-use std::str;
+use clap::{arg, Command};
 use env_logger::Builder;
 use log::LevelFilter;
-
-use std::ffi::OsString;
-
-use clap::{arg, Command};
+use lucidmq::{LucidMQ, Message};
+use std::str;
+use std::thread;
+use std::time::Duration;
 
 fn run_producer(topic: String) {
     let base_dir = String::from("../test_log");
@@ -21,24 +18,25 @@ fn run_producer(topic: String) {
         let key_bytes = key.as_bytes();
         let value = format!("value{}", i);
         let value_bytes = value.as_bytes();
-        let message = Message::new(key_bytes, value_bytes, None); 
+        let message = Message::new(key_bytes, value_bytes, None);
         producer.produce_message(message);
         thread::sleep(second);
-    };
+    }
 }
 
 fn run_consumer(topic: String, consumer_group: String) {
     let base_dir = String::from("../test_log");
-    let lucidmq = LucidMQ::new(base_dir);
+    let mut lucidmq = LucidMQ::new(base_dir);
     let mut consumer = lucidmq.new_consumer(topic, consumer_group);
     loop {
         let records = consumer.poll(2000);
         for record in records {
+            println!("--------------------------");
             println!("{}", str::from_utf8(&record.key).unwrap());
             println!("{}", str::from_utf8(&record.value).unwrap());
             println!("{}", record.timestamp);
         }
-    };
+    }
 }
 
 /*
@@ -62,7 +60,8 @@ fn cli() -> Command<'static> {
                 .about("produce messages")
                 .arg(arg!(<TOPIC> "The topic you want to produce to"))
                 .arg_required_else_help(true),
-        ).subcommand(
+        )
+        .subcommand(
             Command::new("consume")
                 .about("consume messages")
                 .arg(arg!(<TOPIC> "The topic you want to consume from"))
@@ -84,21 +83,17 @@ fn main() {
         }
         Some(("consume", sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-            let consumer_group_name = sub_matches.get_one::<String>("CONSUMER_GROUP").expect("required");
-            println!("Consuming from {}  with {}", topic_name, consumer_group_name);
+            let consumer_group_name = sub_matches
+                .get_one::<String>("CONSUMER_GROUP")
+                .expect("required");
+            println!(
+                "Consuming from {}  with {}",
+                topic_name, consumer_group_name
+            );
             run_consumer(topic_name.to_string(), consumer_group_name.to_string());
-        }
-        Some((ext, sub_matches)) => {
-            let args = sub_matches
-                .get_many::<OsString>("")
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>();
-            println!("Calling out to {:?} with {:?}", ext, args);
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
     }
 
     // Continued program logic goes here...
 }
-

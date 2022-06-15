@@ -1,6 +1,6 @@
-use log::{error};
-use crate::segment::Segment;
 use crate::nolan_errors::CleanerError;
+use crate::segment::Segment;
+use log::error;
 
 #[derive(Default)]
 pub struct Cleaner {
@@ -12,10 +12,9 @@ impl Cleaner {
      * Initialize a new cleaner, based on retention
      */
     pub fn new(bytes_to_retain: u64) -> Cleaner {
-        let cleaner = Cleaner {
+        Cleaner {
             retention_bytes: bytes_to_retain,
-        };
-        return cleaner;
+        }
     }
 
     /**
@@ -38,7 +37,7 @@ impl Cleaner {
             let segmet = segments.get_mut(0).expect("Unable to get index");
             segmet.delete().map_err(|e| {
                 error!("{}", e);
-                return CleanerError::new("unable to delete segment");
+                CleanerError::new("unable to delete segment")
             })?;
             //Remove the first index of the segment
             segments.remove(0);

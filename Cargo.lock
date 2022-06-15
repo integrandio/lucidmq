@@ -185,12 +185,20 @@ name = "lucidmq"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "clap",
- "env_logger",
  "log",
  "nolan",
  "rand",
  "serde",
+]
+
+[[package]]
+name = "lucidmq-cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "env_logger",
+ "log",
+ "lucidmq",
 ]
 
 [[package]]
@@ -287,6 +295,7 @@ name = "pylucidmq"
 version = "0.1.0"
 dependencies = [
  "bincode",
+ "log",
  "nolan",
  "pyo3",
  "rand",

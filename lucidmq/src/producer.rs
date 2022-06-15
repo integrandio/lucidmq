@@ -9,14 +9,12 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub fn new(directory: String, topic: String) -> Producer {
-        let cl = Commitlog::new(directory.clone());
-        let consumer = Producer {
-            topic: topic,
+    pub fn new(directory: String, topic_name: String) -> Producer {
+        let cl = Commitlog::new(directory);
+        Producer {
+            topic: topic_name,
             commitlog: Mutex::new(cl),
-        };
-
-        return consumer;
+        }
     }
 
     pub fn produce_bytes(&mut self, bytes: &[u8]) {
@@ -31,6 +29,6 @@ impl Producer {
     }
 
     pub fn get_topic(&self) -> String {
-        return self.topic.clone();
+        self.topic.clone()
     }
 }

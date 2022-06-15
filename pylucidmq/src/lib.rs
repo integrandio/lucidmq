@@ -14,10 +14,10 @@ use message::Message;
 #[pymodule]
 fn pylucidmq(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_class::<Message>()?;
-    //m.add_function(wrap_pyfunction!(deserialize_message, m)?)?;
     m.add_class::<Producer>()?;
     m.add_class::<Consumer>()?;
     m.add_class::<LucidMQ>()?;
-    //m.add_function(deserialize_message);
+    //m.add_function(wrap_pyfunction!(lucidmq::new_consumer, m)?)?;
+    //m.add_function(lucidmq::new_consumer(base_directory, topic, consumer_group_name));
     Ok(())
 }

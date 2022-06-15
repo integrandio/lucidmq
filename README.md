@@ -94,7 +94,8 @@ for message in messages:
 The repo is made up of a base library written in Rust and other client libraries for easily interacting with the logs using other languages.
 
     ├── nolan            # The base library containing code for the commitlog
-    ├── lucidmq          # CLI and Rust Client Library
+    ├── lucidmq-cli      # CLI library for running LucidMQ as an executable
+    ├── lucidmq          # Rust Client Library
     └── pylucidmq        # Python Client Library
 
 ---
@@ -123,4 +124,4 @@ LucidMQ design
 
 ## License
 
-GNU General Public License v3.0
+Apache-2.0 license
