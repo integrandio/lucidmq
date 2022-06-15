@@ -62,7 +62,9 @@ impl Consumer {
                 }
             };
         }
-        self.save_info();
+        if !records.is_empty() {
+            self.save_info();
+        }
         return records;
     }
 
@@ -96,7 +98,7 @@ impl Consumer {
     }
 
     /**
-     * save info calls a callback function which will sync an persis the state.
+     * save info calls a callback function which will sync and persist the state.
      */
     fn save_info(&self) {
         (self.cb)()
