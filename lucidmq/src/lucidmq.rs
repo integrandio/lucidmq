@@ -20,19 +20,17 @@ pub struct ConsumerGroup {
 
 impl ConsumerGroup {
     pub fn new(consumer_group_name: String) -> ConsumerGroup {
-        let consumer_group = ConsumerGroup {
+        ConsumerGroup {
             name: consumer_group_name,
             offset: 0.into(),
-        };
-        return consumer_group;
+        }
     }
 
     pub fn new_cg(consumer_group_name: String, offset_in: AtomicU32) -> ConsumerGroup {
-        let consumer_group = ConsumerGroup {
+        ConsumerGroup {
             name: consumer_group_name,
             offset: offset_in,
-        };
-        return consumer_group;
+        }
     }
 }
 
@@ -53,16 +51,15 @@ impl Topic {
             .map(char::from)
             .collect();
         let new_path = &path.join(directory_name);
-        let consumer_groups = Vec::new();
-        let topic = Topic {
+        let new_consumer_groups = Vec::new();
+        Topic {
             name: topic_name,
             directory: new_path
                 .to_str()
                 .expect("unable to convert to string")
                 .to_string(),
-            consumer_groups: consumer_groups,
-        };
-        return topic;
+            consumer_groups: new_consumer_groups,
+        }
     }
 
     pub fn load_consumer_group(&mut self, consumer_group_name: String) -> Arc<ConsumerGroup> {
@@ -73,24 +70,23 @@ impl Topic {
         }
         let new_gc = Arc::new(ConsumerGroup::new(consumer_group_name));
         self.consumer_groups.push(new_gc.clone());
-        return new_gc;
+        new_gc
     }
 
     pub fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
-        let mut consumer_groups = Vec::new();
+        let mut new_consumer_groups = Vec::new();
         for cg in &topic_ref.consumer_groups {
-            consumer_groups.push(cg.clone());
+            new_consumer_groups.push(cg.clone());
         }
-        let topic = Topic {
+        Topic {
             name: topic_ref.name.clone(),
             directory: topic_ref.directory.clone(),
-            consumer_groups: consumer_groups
-        };
-        return topic;
+            consumer_groups: new_consumer_groups
+        }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LucidMQ {
     base_directory: String,
     topics: Arc<RwLock<Vec<Topic>>>,
@@ -105,7 +101,7 @@ impl LucidMQ {
             Ok(bytes) => {
                 let decoded_lucidmq: LucidMQ =
                     bincode::deserialize(&bytes).expect("Unable to deserialize message");
-                return decoded_lucidmq;
+                decoded_lucidmq
             }
             Err(_err) => {
                 let lucidmq_vec = Vec::new();
@@ -114,7 +110,7 @@ impl LucidMQ {
                     topics: Arc::new(RwLock::new(lucidmq_vec)),
                 };
                 fs::create_dir_all(directory).expect("Unable to create directory");
-                return lucidmq;
+                lucidmq
             }
         }
     }
@@ -124,8 +120,7 @@ impl LucidMQ {
         if found_index >= 0 {
             let usize_index: usize = found_index.try_into().expect("unable to convert");
             let found_topic = &self.topics.read().unwrap()[usize_index];
-            let producer = Producer::new(found_topic.directory.clone(), found_topic.name.clone());
-            return producer;
+            Producer::new(found_topic.directory.clone(), found_topic.name.clone())
         } else {
             let new_topic = Topic::new(topic, self.base_directory.clone());
             let producer = Producer::new(new_topic.directory.clone(), new_topic.name.clone());
@@ -133,11 +128,12 @@ impl LucidMQ {
                 self.topics.write().unwrap().push(new_topic);
             }
             self.flush();
-            return producer;
+            producer
         }
     }
 
-    pub fn new_consumer(mut self, topic: String, consumer_group_name: String) -> Consumer {
+    pub fn new_consumer(&mut self, topic: String, consumer_group_name: String) -> Consumer {
+        let lucidmq = self.clone();
         let found_index = self.check_topics(&topic);
         if found_index >= 0 {
             let usize_index: usize = found_index.try_into().expect("unable to convert");
@@ -150,13 +146,12 @@ impl LucidMQ {
                 topic_name = found_topic.name.clone();
                 consumer_cg = found_topic.load_consumer_group(consumer_group_name.clone());
             }
-            let consumer = Consumer::new(
+            Consumer::new(
                 directory,
                 topic_name,
                 consumer_cg,
-                Box::new(move || self.sync(consumer_group_name.clone())),
-            );
-            return consumer;
+                Box::new(move || lucidmq.sync(consumer_group_name.clone())),
+            )
         } else {
             let user_cg = Arc::new(ConsumerGroup::new(consumer_group_name.clone()));
             let mut new_topic = Topic::new(topic, self.base_directory.clone());
@@ -166,13 +161,12 @@ impl LucidMQ {
             {
                 self.topics.write().unwrap().push(new_topic);
             }
-            let consumer = Consumer::new(
+            Consumer::new(
                 new_directory_name,
                 new_topic_name,
                 user_cg,
-                Box::new(move || self.sync(consumer_group_name.clone())),
-            );
-            return consumer;
+                Box::new(move || lucidmq.sync(consumer_group_name.clone())),
+            )
         }
     }
 
@@ -182,9 +176,9 @@ impl LucidMQ {
         }
         let indexed_value = &self.topics.read().unwrap().iter().position(|topic| topic.name == *topic_to_find);
         match indexed_value {
-            None => return -1,
+            None => -1,
             Some(index) => {
-                return i8::try_from(*index).unwrap();
+                i8::try_from(*index).unwrap()
             },
         }
     }

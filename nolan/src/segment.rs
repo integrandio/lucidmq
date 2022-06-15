@@ -29,10 +29,13 @@ impl Segment {
     /**
      * Create a new segment with the provided starting offset
      */
-    pub fn new(directory: String, max_bytes: u64, offset: u16) -> Segment {
+    pub fn new(base_directory: String, max_segment_bytes: u64, offset: u16) -> Segment {
         info!("Creating a new segment");
-        let log_file_name =
-            Self::create_segment_file_name(directory.clone(), offset, String::from(LOG_SUFFIX));
+        let log_file_name = Self::create_segment_file_name(
+            base_directory.clone(),
+            offset,
+            String::from(LOG_SUFFIX),
+        );
         let file = OpenOptions::new()
             .create(true)
             .read(true)
@@ -41,34 +44,39 @@ impl Segment {
             .open(log_file_name.clone())
             .expect("Unable to create and open file");
 
-        let index_file_name =
-            Self::create_segment_file_name(directory.clone(), offset, String::from(INDEX_SUFFIX));
-        let index = Index::new(index_file_name);
+        let index_file_name = Self::create_segment_file_name(
+            base_directory.clone(),
+            offset,
+            String::from(INDEX_SUFFIX),
+        );
+        let new_index = Index::new(index_file_name);
 
-        let segment = Segment {
+        Segment {
             file_name: log_file_name,
             position: 0,
-            max_bytes: max_bytes,
+            max_bytes: max_segment_bytes,
             starting_offset: offset,
             next_offset: offset,
-            directory: directory,
+            directory: base_directory,
             log_file: file,
-            index: index,
-        };
-        return segment;
+            index: new_index,
+        }
     }
 
     /**
      * Given a directory and the base name of the log and index file, load a new
      * segment into memory.
      */
-    pub fn load_segment(directory: String, segment_base: String) -> Result<Segment, SegmentError> {
+    pub fn load_segment(
+        base_directory: String,
+        segment_base: String,
+    ) -> Result<Segment, SegmentError> {
         let segment_offset = segment_base.parse::<u16>().map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to parse base string into u16");
+            SegmentError::new("unable to parse base string into u16")
         })?;
         let log_file_name = Self::create_segment_file_name(
-            directory.clone(),
+            base_directory.clone(),
             segment_offset,
             String::from(LOG_SUFFIX),
         );
@@ -81,31 +89,31 @@ impl Segment {
             .open(log_file_name.clone())
             .map_err(|e| {
                 error!("{}", e);
-                return SegmentError::new("unable to open log file");
+                SegmentError::new("unable to open log file")
             })?;
 
         let metadata = file.metadata().map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable get metadata for log file");
+            SegmentError::new("unable get metadata for log file")
         })?;
         // This would be unnesseary if we used u64 for the position
         let current_segment_postion: u32 = u32::try_from(metadata.len()).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to convert from u64 to u32");
+            SegmentError::new("unable to convert from u64 to u32")
         })?;
 
         let index_file_name = Self::create_segment_file_name(
-            directory.clone(),
+            base_directory.clone(),
             segment_offset,
             String::from(INDEX_SUFFIX),
         );
-        let mut index = Index::new(index_file_name);
+        let mut loaded_index = Index::new(index_file_name);
 
-        let mut total_entries = index.load_index().map_err(|e| {
+        let mut total_entries = loaded_index.load_index().map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to load index");
+            SegmentError::new("unable to load index")
         })?;
-        total_entries = total_entries + segment_offset;
+        total_entries += segment_offset;
 
         let segment = Segment {
             file_name: log_file_name,
@@ -113,9 +121,9 @@ impl Segment {
             max_bytes: 255,
             starting_offset: segment_offset,
             next_offset: total_entries,
-            directory: directory,
+            directory: base_directory,
             log_file: file,
-            index: index,
+            index: loaded_index,
         };
 
         Ok(segment)
@@ -128,10 +136,10 @@ impl Segment {
         // load the entries from the index
         let mut total_entries = self.index.reload_index().map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to reload index");
+            SegmentError::new("unable to reload index")
         })?;
         //Calculate and set the next offset
-        total_entries = total_entries + self.starting_offset;
+        total_entries += self.starting_offset;
         self.next_offset = total_entries;
         Ok(true)
     }
@@ -145,7 +153,7 @@ impl Segment {
             .metadata()
             .map_err(|e| {
                 error!("{}", e);
-                return SegmentError::new("unable to reload index");
+                SegmentError::new("unable to reload index")
             })?
             .len();
         if computed_size_bytes > self.max_bytes {
@@ -155,21 +163,21 @@ impl Segment {
         }
         let u_bytes = self.log_file.write(data).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to write to log file");
+            SegmentError::new("unable to write to log file")
         })?;
         let written_bytes: u32 = u32::try_from(u_bytes).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to convert from usize to u32");
+            SegmentError::new("unable to convert from usize to u32")
         })?;
         self.index
-            .add_entry(self.position, written_bytes.clone())
+            .add_entry(self.position, written_bytes)
             .map_err(|e| {
                 error!("{}", e);
-                return SegmentError::new("unable to add entry to index");
+                SegmentError::new("unable to add entry to index")
             })?;
-        self.position = self.position + written_bytes;
-        self.next_offset = self.next_offset + 1;
-        return Ok(true);
+        self.position += written_bytes;
+        self.next_offset += 1;
+        Ok(true)
     }
 
     /**
@@ -177,9 +185,9 @@ impl Segment {
      */
     pub fn read_at(&mut self, offset: usize) -> Result<Vec<u8>, SegmentError> {
         // This condition is only applied when we're dealing with segment 0, can this be combined below??
-        if self.starting_offset == 0 && offset >= usize::from(self.next_offset) {
-            return Err(SegmentError::new("offset is out of bounds"));
-        } else if offset >= usize::from(self.next_offset - self.starting_offset) {
+        if (self.starting_offset == 0 && offset >= usize::from(self.next_offset))
+            || (offset >= usize::from(self.next_offset - self.starting_offset))
+        {
             return Err(SegmentError::new("offset is out of bounds"));
         }
         let (start, total) = self
@@ -187,46 +195,46 @@ impl Segment {
             .return_entry_details_by_offset(offset)
             .map_err(|e| {
                 error!("{}", e);
-                return SegmentError::new("unable to get entry details from index");
+                SegmentError::new("unable to get entry details from index")
             })?;
         // Let's create our buffer
         let mut buffer = vec![0; total];
         // Seek to entries start position
         self.log_file.seek(SeekFrom::Start(start)).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to seek to offset in the log file");
+            SegmentError::new("unable to seek to offset in the log file")
         })?;
         // Read log file bytes into the buffer
         self.log_file.read_exact(&mut buffer).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to read into buffer");
+            SegmentError::new("unable to read into buffer")
         })?;
-        return Ok(buffer);
+        Ok(buffer)
     }
 
     /**
      * Close the log file and the index file, then delete both of these files.
      */
     pub fn delete(&self) -> Result<bool, SegmentError> {
-        self.close();
+        //self.close();
         fs::remove_file(&self.file_name).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to delete log file");
+            SegmentError::new("unable to delete log file")
         })?;
         fs::remove_file(&self.index.file_name).map_err(|e| {
             error!("{}", e);
-            return SegmentError::new("unable to delete index file");
+            SegmentError::new("unable to delete index file")
         })?;
         Ok(true)
     }
 
-    /**
-     * Closes the files to log and the index.
-     */
-    fn close(&self) {
-        drop(&self.log_file);
-        self.index.close();
-    }
+    // /**
+    //  * Closes the files to log and the index.
+    //  */
+    // // fn close(&self) {
+    // //     drop(&self.log_file);
+    // //     self.index.close();
+    // // }
 
     /**
      * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
@@ -239,6 +247,6 @@ impl Segment {
         let file_name = format!("{:0>5}{}", starting_offset, suffix);
         let new_file = Path::new(&directory).join(file_name);
         //TODO: Error handle this
-        return String::from(new_file.to_str().expect("unable to convert path to string"));
+        String::from(new_file.to_str().expect("unable to convert path to string"))
     }
 }

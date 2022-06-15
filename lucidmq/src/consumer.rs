@@ -1,3 +1,4 @@
+use log::info;
 use nolan::Commitlog;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -18,16 +19,16 @@ impl Consumer {
     /**
      * Initializes a new consumer
      */
-    pub fn new(directory: String, topic: String, consumer_group: Arc<ConsumerGroup>, callback: Box<dyn Fn()>) -> Consumer {
-        let cl = Commitlog::new(directory.clone());
+    pub fn new(directory: String, topic_name: String, new_consumer_group: Arc<ConsumerGroup>, callback: Box<dyn Fn()>) -> Consumer {
+        let cl = Commitlog::new(directory);
         let mut consumer = Consumer {
-            topic: topic,
+            topic: topic_name,
             commitlog: cl,
-            consumer_group: consumer_group,
+            consumer_group: new_consumer_group,
             cb: callback
         };
         consumer.consumer_group_initialize();
-        return consumer;
+        consumer
     }
 
     /**
@@ -36,6 +37,7 @@ impl Consumer {
     pub fn poll(&mut self, timeout: u64) -> Vec<Message> {
         //Let's check if there are any new segments added.
         self.commitlog.reload_segments();
+        info!("polling for messages");
 
         let timeout_duration = Duration::from_millis(timeout);
         let ten_millis = Duration::from_millis(100);
@@ -65,14 +67,14 @@ impl Consumer {
         if !records.is_empty() {
             self.save_info();
         }
-        return records;
+        records
     }
 
     /**
      * Returns the topic that the consumer is consuming from.
      */
     pub fn get_topic(&self) -> String {
-        return self.topic.clone();
+        self.topic.clone()
     }
 
     /**
@@ -87,7 +89,6 @@ impl Consumer {
             self.consumer_group.offset.store(new_consumer_group_offset, Ordering::SeqCst);
             self.save_info();
         }
-        return
     }
 
     /**

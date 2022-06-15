@@ -39,25 +39,24 @@ impl Index {
             .open(index_path.clone())
             .expect(&message);
         let empty_entry_vec = Vec::new();
-        let index = Index {
+        Index {
             file_name: index_path,
             entries: empty_entry_vec,
             index_file: file,
-        };
-        return index;
+        }
     }
 
     /**
      * Add a new entry to the index
      */
-    pub fn add_entry(&mut self, position: u32, total: u32) -> Result<bool, IndexError> {
+    pub fn add_entry(&mut self, start_position: u32, total_bytes: u32) -> Result<bool, IndexError> {
         let entry = Entry {
-            start: position,
-            total: total,
+            start: start_position,
+            total: total_bytes,
         };
         let encoded_entry: Vec<u8> = bincode::serialize(&entry).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("Unable to serialize entry");
+            IndexError::new("Unable to serialize entry")
         })?;
 
         self.entries.push(entry);
@@ -65,7 +64,7 @@ impl Index {
         let entry_bytes: &[u8] = &encoded_entry[..];
         self.index_file.write(entry_bytes).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("Unable to write entry to index file");
+            IndexError::new("Unable to write entry to index file")
         })?;
         Ok(true)
     }
@@ -76,7 +75,7 @@ impl Index {
     pub fn load_index(&mut self) -> Result<u16, IndexError> {
         self.index_file.seek(SeekFrom::Start(0)).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("unable seek to begining of the index");
+            IndexError::new("unable seek to begining of the index")
         })?;
         let mut circut_break: bool = false;
         loop {
@@ -98,14 +97,13 @@ impl Index {
             }
             let decoded_entry: Entry = bincode::deserialize(&buffer).map_err(|e| {
                 error!("{}", e);
-                return IndexError::new("unable to deserialize entry");
+                IndexError::new("unable to deserialize entry")
             })?;
             self.entries.push(decoded_entry);
         }
-        //TODO: error handle this correctly
         let value = u16::try_from(self.entries.len()).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("unable to convert usize to u16");
+            IndexError::new("unable to convert usize to u16")
         })?;
         Ok(value)
     }
@@ -122,7 +120,7 @@ impl Index {
             .seek(SeekFrom::Start(entry_read_start_bytes))
             .map_err(|e| {
                 error!("{}", e);
-                return IndexError::new("unable to seek to last entry offset");
+                IndexError::new("unable to seek to last entry offset")
             })?;
         // Iterate through the file bytes and conver them to entries
         let mut circut_break: bool = false;
@@ -143,13 +141,13 @@ impl Index {
             }
             let decoded_entry: Entry = bincode::deserialize(&buffer).map_err(|e| {
                 error!("{}", e);
-                return IndexError::new("unable to deserialize entry");
+                IndexError::new("unable to deserialize entry")
             })?;
             self.entries.push(decoded_entry);
         }
         let value = u16::try_from(self.entries.len()).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("unable to convert usize to u16");
+            IndexError::new("unable to convert usize to u16")
         })?;
         Ok(value)
     }
@@ -167,15 +165,15 @@ impl Index {
         //TODO: error handle this correctly
         let total_bytes: usize = usize::try_from(entry.total).map_err(|e| {
             error!("{}", e);
-            return IndexError::new("unable to convert from u32 to usize");
+            IndexError::new("unable to convert from u32 to usize")
         })?;
         Ok((start_offset, total_bytes))
     }
 
-    /**
-     * Close the index file
-     */
-    pub fn close(&self) {
-        drop(&self.index_file);
-    }
+    // /**
+    //  * Close the index file
+    //  */
+    // pub fn close(&self) {
+    //     drop(&self.index_file);
+    // }
 }

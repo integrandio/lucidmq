@@ -1,5 +1,5 @@
 use core::panic;
-use log::{info, error, warn};
+use log::{error, info, warn};
 use std::fs;
 use std::sync::atomic::AtomicUsize;
 
@@ -25,11 +25,11 @@ impl Commitlog {
      */
     pub fn new(path: String) -> Commitlog {
         let vec = Vec::new();
-        let cleaner = Cleaner::new(1000);
+        let new_cleaner = Cleaner::new(1000);
         let mut clog = Commitlog {
             directory: path.clone(),
             segments: vec,
-            cleaner: cleaner,
+            cleaner: new_cleaner,
             max_segment_size: 256,
             ..Default::default()
         };
@@ -85,29 +85,29 @@ impl Commitlog {
         let mut valid_segment_files: Vec<String> = Vec::new();
         let mut files_to_clean: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.directory) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if let Some(extension) = path.extension() {
-                        if extension == "log" {
-                            let mut corresponding_index_path = entry.path();
-                            corresponding_index_path.set_extension("index");
-                            if !corresponding_index_path.is_file() {
-                                files_to_clean.push(path.to_str().unwrap().into());
+            for entry in entries.flatten() {
+                //if let Ok(entry) = entry {
+                let path = entry.path();
+                if let Some(extension) = path.extension() {
+                    if extension == "log" {
+                        let mut corresponding_index_path = entry.path();
+                        corresponding_index_path.set_extension("index");
+                        if !corresponding_index_path.is_file() {
+                            files_to_clean.push(path.to_str().unwrap().into());
+                        }
+                    } else if extension == "index" {
+                        let mut corresponding_log_path = entry.path();
+                        corresponding_log_path.set_extension("log");
+                        if corresponding_log_path.is_file() {
+                            if let Some(file_stem) = path.file_stem() {
+                                valid_segment_files.push(file_stem.to_str().unwrap().into());
                             }
-                        } else if extension == "index" {
-                            let mut corresponding_log_path = entry.path();
-                            corresponding_log_path.set_extension("log");
-                            if corresponding_log_path.is_file() {
-                                if let Some(file_stem) = path.file_stem() {
-                                    valid_segment_files.push(file_stem.to_str().unwrap().into());
-                                }
-                            } else {
-                                files_to_clean.push(path.to_str().unwrap().into());
-                            }
+                        } else {
+                            files_to_clean.push(path.to_str().unwrap().into());
                         }
                     }
                 }
+                //}
             }
         }
         for segment_file in valid_segment_files {
@@ -122,7 +122,7 @@ impl Commitlog {
         } else {
             self.segments
                 .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
-            latest_segment_index = latest_segment_index - 1;
+            latest_segment_index -= 1;
             if latest_segment_index > 0 {
                 self.current_segment_index = AtomicUsize::new(latest_segment_index);
             }
@@ -158,53 +158,52 @@ impl Commitlog {
         let mut segment_map: HashMap<String, String> = HashMap::new();
         let mut valid_segments_found: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.directory) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if let Some(extension) = path.extension() {
-                        let file_stem = path
-                            .file_stem()
-                            .expect("Unable to get file stem")
-                            .to_str()
-                            .unwrap();
-                        //let base_file_name = path.to_str().unwrap();
-                        if extension == "log" {
-                            if segment_map.contains_key(file_stem) {
-                                valid_segments_found.push(file_stem.into())
-                            } else {
-                                segment_map.insert(file_stem.into(), "log".to_string());
-                            }
-                        } else if extension == "index" {
-                            if segment_map.contains_key(file_stem) {
-                                valid_segments_found.push(file_stem.into())
-                            } else {
-                                segment_map.insert(file_stem.into(), "index".to_string());
-                            }
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if let Some(extension) = path.extension() {
+                    let file_stem = path
+                        .file_stem()
+                        .expect("Unable to get file stem")
+                        .to_str()
+                        .unwrap();
+                    //let base_file_name = path.to_str().unwrap();
+                    if extension == "log" {
+                        if segment_map.contains_key(file_stem) {
+                            valid_segments_found.push(file_stem.into())
                         } else {
-                            warn!("extension not found {:?}", extension);
+                            segment_map.insert(file_stem.into(), "log".to_string());
                         }
+                    } else if extension == "index" {
+                        if segment_map.contains_key(file_stem) {
+                            valid_segments_found.push(file_stem.into())
+                        } else {
+                            segment_map.insert(file_stem.into(), "index".to_string());
+                        }
+                    } else {
+                        warn!("extension not found {:?}", extension);
                     }
                 }
             }
         }
 
-        let segments_to_add: Vec<String> = valid_segments_found.into_iter()
-                .filter(|segment| {
-                    let segment_offset = segment
+        let segments_to_add: Vec<String> = valid_segments_found
+            .into_iter()
+            .filter(|segment| {
+                let segment_offset = segment
                     .clone()
                     .parse::<u16>()
                     .expect("Unable to parse segment base into int.");
-                    let mut segment_exists = false;
-                    for existing_segment in &self.segments {
-                        if segment_offset == existing_segment.starting_offset {
-                            segment_exists = true;
-                            break;
-                        }
+                let mut segment_exists = false;
+                for existing_segment in &self.segments {
+                    if segment_offset == existing_segment.starting_offset {
+                        segment_exists = true;
+                        break;
                     }
-                    !segment_exists
-                })
-                .collect();
-                
+                }
+                !segment_exists
+            })
+            .collect();
+
         if segments_to_add.is_empty() {
             return;
         }
@@ -217,9 +216,7 @@ impl Commitlog {
         }
 
         let mut latest_segment_index = self.segments.len();
-        if latest_segment_index == 0 {
-            return;
-        } else {
+        if latest_segment_index != 0 {
             self.segments
                 .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
             latest_segment_index -= 1;
@@ -306,12 +303,11 @@ impl Commitlog {
     /**
      * Returns the first offset of the first segment.
      */
-    pub fn get_oldest_offset(&mut self) -> usize{
+    pub fn get_oldest_offset(&mut self) -> usize {
         let oldest_segment = &self.segments[0];
         let offset = oldest_segment.starting_offset;
         usize::from(offset)
     }
-    
 }
 
 #[cfg(test)]

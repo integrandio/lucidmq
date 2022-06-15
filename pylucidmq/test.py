@@ -20,8 +20,9 @@ def test_producer():
 
 def test_consumer():
     lucidmq = pylucidmq.LucidMQ("../test_log")
-    consumer = lucidmq.new_consumer("topic1")
+    consumer = lucidmq.new_consumer("topic1", "group3")
     # while(True):
+    #print(type(consumer))
     messages = consumer.poll(1000)
     for message in messages:
         key = bytes(message.key)
@@ -29,5 +30,5 @@ def test_consumer():
         print(key.decode("utf-8"))
         print(value.decode("utf-8"))
 
-test_producer()
-#test_consumer()
+# test_producer()
+test_consumer()
