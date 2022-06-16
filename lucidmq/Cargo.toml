@@ -1,7 +1,7 @@
 [package]
 name = "lucidmq"
 version = "0.1.0"
-description = "A short description of my package"
+description = "Rust Library that Implements and Interfaces LucidMQ"
 edition = "2021"
 authors = ["Burak Kiran <burakkiran95@gmail.com>"]
 readme = "README.md"
