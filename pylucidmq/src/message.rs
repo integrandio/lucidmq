@@ -16,19 +16,8 @@ pub struct Message{
 
 #[pymethods]
 impl Message {
-    // #[new]
-    // pub fn py_new(key: &[u8], value: &[u8], timestamp: i64) -> PyResult<Message> {
-    //     let key_vec = key.to_vec();
-    //     let value_vec = value.to_vec();
-    //     let message = Message {
-    //         key: key_vec,
-    //         value: value_vec,
-    //         timestamp: timestamp,
-    //     };
-    //     return message;
-    // }
     #[new]
-    pub fn py_new_without_timestamp(key: &[u8], value: &[u8]) -> Message {
+    pub fn new(key: &[u8], value: &[u8]) -> Message {
         let key_vec = key.to_vec();
         let value_vec = value.to_vec();
         let timestamp = SystemTime::now()
@@ -42,19 +31,26 @@ impl Message {
         };
         return message;
     }
+
+    #[staticmethod]
+    pub fn new_with_timestamp(key: &[u8], value: &[u8], timestamp: i64) -> Message {
+        let key_vec = key.to_vec();
+        let value_vec = value.to_vec();
+        Message {
+            key: key_vec,
+            value: value_vec,
+            timestamp: timestamp,
+        }
+    }
+
     pub fn serialize_message(&mut self) -> Vec<u8> {
         let encoded_message: Vec<u8> = bincode::serialize(&self).expect("Unable to encode message");
         return encoded_message;
     }
 
-    // pub fn deserialize_message(_py: Python, message_bytes: &PyBytes) -> Message {
-    //     let decoded_message: Message = bincode::deserialize(message_bytes.as_bytes()).expect("Unable to deserialize message");
-    //     return decoded_message;
-    // }
+    #[staticmethod]
+    pub fn deserialize_message(message_bytes: &[u8]) -> Message {
+        let decoded_message: Message = bincode::deserialize(message_bytes).expect("Unable to deserialize message");
+        return decoded_message;
+    }
 }
-
-//This should go above but it doesnt work lol
-// pub fn deserialize_message(message_bytes: &[u8]) -> Message {
-//     let decoded_message: Message = bincode::deserialize(message_bytes).expect("Unable to deserialize message");
-//     return decoded_message;
-// }

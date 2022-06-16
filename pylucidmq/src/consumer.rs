@@ -69,7 +69,7 @@ impl Consumer {
             let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
             match self.commitlog.read(n) {
                 Ok(buffer) => {
-                    let message = deserialize_message(&buffer);
+                    let message = Message::deserialize_message(&buffer);
                     records.push(message);
                     self.update_consumer_group_offset();
                 }
@@ -124,9 +124,4 @@ impl Consumer {
     fn save_info(&self) {
         (self.cb)()
     }
-}
-
-pub fn deserialize_message(message_bytes: &[u8]) -> Message {
-    let decoded_message: Message = bincode::deserialize(message_bytes).expect("Unable to deserialize message");
-    return decoded_message;
 }

@@ -17,15 +17,15 @@ impl Producer {
         }
     }
 
-    pub fn produce_bytes(&mut self, bytes: &[u8]) {
-        let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
-        cl.append(bytes);
-    }
-
     pub fn produce_message(&mut self, mut message: Message) {
         let message_bytes = message.serialize_message();
         let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
         cl.append(&message_bytes);
+    }
+
+    pub fn produce_bytes(&mut self, bytes: &[u8]) {
+        let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
+        cl.append(bytes);
     }
 
     pub fn get_topic(&self) -> String {
