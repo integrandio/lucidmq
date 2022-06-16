@@ -11,7 +11,7 @@ def test_message():
 def test_producer():
     lucidmq = pylucidmq.LucidMQ("../test_log")
     producer = lucidmq.new_producer("topic1")
-    for x in range(100):
+    for x in range(10):
         key = "key{0}".format(x).encode()
         value = "value{0}".format(x).encode()
         x = pylucidmq.Message(key, value)
@@ -21,8 +21,6 @@ def test_producer():
 def test_consumer():
     lucidmq = pylucidmq.LucidMQ("../test_log")
     consumer = lucidmq.new_consumer("topic1", "group3")
-    # while(True):
-    #print(type(consumer))
     messages = consumer.poll(1000)
     for message in messages:
         key = bytes(message.key)
@@ -30,5 +28,5 @@ def test_consumer():
         print(key.decode("utf-8"))
         print(value.decode("utf-8"))
 
-# test_producer()
+test_producer()
 test_consumer()

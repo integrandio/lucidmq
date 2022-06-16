@@ -15,23 +15,19 @@ impl Producer {
     #[new]
     pub fn new(directory: String, topic: String) -> Producer {
         let cl = Commitlog::new(directory.clone());
-        let consumer = Producer {
+        Producer {
             topic: topic,
             commitlog: Mutex::new(cl),
-        };
-
-        return consumer;
+        }
     }
 
     pub fn produce_message(&mut self, mut message: Message) {
-        let vector_thing = message.serialize_message();
-        let vec_point = &vector_thing;
-        let c: &[u8] = &vec_point;
+        let message_bytes = message.serialize_message();
         let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
-        cl.append(c);
+        cl.append(&message_bytes);
     }
 
-    pub fn produce(&mut self, message: &[u8]) {
+    pub fn produce_bytes(&mut self, message: &[u8]) {
         let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
         cl.append(message);
     }
