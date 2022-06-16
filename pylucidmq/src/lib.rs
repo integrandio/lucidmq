@@ -1,14 +1,14 @@
-use pyo3::{prelude::*};
+use pyo3::prelude::*;
 
 mod consumer;
-mod producer;
-mod message;
 mod lucidmq;
+mod message;
+mod producer;
 
-use lucidmq::LucidMQ;
 use consumer::Consumer;
-use producer::Producer;
+use lucidmq::LucidMQ;
 use message::Message;
+use producer::Producer;
 
 /// A Python module implemented in Rust.
 #[pymodule]

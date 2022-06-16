@@ -12,15 +12,11 @@ pub struct Message {
 impl Message {
     pub fn new(key: &[u8], value: &[u8], timestamp: Option<i64>) -> Message {
         let message_timestamp: i64 = match timestamp {
-            Some(timestamp) => {
-                timestamp
-            }
-            None => {
-                SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_millis() as i64
-            }
+            Some(timestamp) => timestamp,
+            None => SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as i64,
         };
         let key_vec = key.to_vec();
         let value_vec = value.to_vec();

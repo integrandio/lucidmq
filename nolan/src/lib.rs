@@ -1,7 +1,7 @@
-mod commitlog;
 mod cleaner;
+mod commitlog;
 mod index;
-mod segment;
 mod nolan_errors;
+mod segment;
 
 pub use commitlog::Commitlog;

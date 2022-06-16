@@ -15,26 +15,30 @@ pub struct Commitlog {
     segments: Vec<Segment>,
     cleaner: Cleaner,
     max_segment_size: u64,
-    current_segment_index: AtomicUsize, //current_segment: Arc<Mutex<usize>>
-                                        //current_segment: Option<Arc<Mutex<Segment>>>
+    current_segment_index: AtomicUsize,
 }
 
 impl Commitlog {
     /**
-     * new creates a new commitlog
+     * new creates a new commitlog taking in a base directory(where the segments live),
+     * a max segment size in bytes and a the max bytes the whole commitlog that the cleaner will retain.
      */
-    pub fn new(path: String) -> Commitlog {
+    pub fn new(
+        base_directory: String,
+        max_segment_size_bytes: u64,
+        cleaner_bytes_to_retain: u64,
+    ) -> Commitlog {
         let vec = Vec::new();
-        let new_cleaner = Cleaner::new(1000);
+        let new_cleaner = Cleaner::new(cleaner_bytes_to_retain);
         let mut clog = Commitlog {
-            directory: path.clone(),
+            directory: base_directory.clone(),
             segments: vec,
             cleaner: new_cleaner,
-            max_segment_size: 256,
+            max_segment_size: max_segment_size_bytes,
             ..Default::default()
         };
         //TODO: error handle this
-        fs::create_dir_all(path).expect("Unable to create directory");
+        fs::create_dir_all(base_directory).expect("Unable to create directory");
         clog.load_segments();
         clog
     }
@@ -319,7 +323,7 @@ mod commitlog_tests {
     #[test]
     fn it_works() {
         let test_dir_path = String::from("test");
-        Commitlog::new(test_dir_path.clone());
+        Commitlog::new(test_dir_path.clone(), 100, 1000);
         assert!(Path::new(&test_dir_path).is_dir());
     }
 }
