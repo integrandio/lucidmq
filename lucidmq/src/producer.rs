@@ -9,8 +9,13 @@ pub struct Producer {
 }
 
 impl Producer {
-    pub fn new(directory: String, topic_name: String) -> Producer {
-        let cl = Commitlog::new(directory);
+    pub fn new(
+        directory: String,
+        topic_name: String,
+        max_segment_size_bytes: u64,
+        max_commitlog_size: u64,
+    ) -> Producer {
+        let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size);
         Producer {
             topic: topic_name,
             commitlog: Mutex::new(cl),

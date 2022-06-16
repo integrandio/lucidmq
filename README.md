@@ -102,14 +102,9 @@ The repo is made up of a base library written in Rust and other client libraries
 
 ## What's Next?
 
-- Clean up error handling
 - Implement tests
-- Implement CLI in the lucidmq sub repo
 - Implement JavaScript library using web assembly
 - Implement C library
-- Implement consumer groups
-- Update structure so that consumer offsets are saved
-- Reimplement mutexes, this should exist in the nolan base library? The current implementation would require rewriting the code in every single client library.
 
 LucidMQ design
 

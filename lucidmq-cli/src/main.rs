@@ -8,13 +8,13 @@ use std::time::Duration;
 
 fn run_producer(topic: String) {
     let base_dir = String::from("../test_log");
-    let mut lucidmq = LucidMQ::new(base_dir);
+    let mut lucidmq = LucidMQ::new(base_dir, 1000, 5000);
 
     let mut producer = lucidmq.new_producer(topic);
     let second = Duration::from_millis(1000);
 
     for i in 0..100 {
-        let key = format!("producer1");
+        let key = "producer1".to_string();
         let key_bytes = key.as_bytes();
         let value = format!("value{}", i);
         let value_bytes = value.as_bytes();
@@ -26,7 +26,7 @@ fn run_producer(topic: String) {
 
 fn run_consumer(topic: String, consumer_group: String) {
     let base_dir = String::from("../test_log");
-    let mut lucidmq = LucidMQ::new(base_dir);
+    let mut lucidmq = LucidMQ::new(base_dir, 1000, 5000);
     let mut consumer = lucidmq.new_consumer(topic, consumer_group);
     loop {
         let records = consumer.poll(2000);

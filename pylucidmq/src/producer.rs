@@ -1,8 +1,8 @@
-use pyo3::{prelude::*};
+use crate::Message;
 use nolan::Commitlog;
+use pyo3::prelude::*;
 use std::str;
 use std::sync::Mutex;
-use crate::Message;
 
 #[pyclass]
 pub struct Producer {
@@ -13,10 +13,15 @@ pub struct Producer {
 #[pymethods]
 impl Producer {
     #[new]
-    pub fn new(directory: String, topic: String) -> Producer {
-        let cl = Commitlog::new(directory.clone());
+    pub fn new(
+        directory: String,
+        topic_name: String,
+        max_segment_size_bytes: u64,
+        max_commitlog_size: u64,
+    ) -> Producer {
+        let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size);
         Producer {
-            topic: topic,
+            topic: topic_name,
             commitlog: Mutex::new(cl),
         }
     }
@@ -33,6 +38,6 @@ impl Producer {
     }
 
     pub fn get_topic(&self) -> String {
-        return self.topic.clone();
+        self.topic.clone()
     }
 }

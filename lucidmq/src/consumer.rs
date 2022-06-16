@@ -1,12 +1,11 @@
+use crate::lucidmq::ConsumerGroup;
+use crate::message::Message;
 use log::info;
 use nolan::Commitlog;
-use std::sync::Arc;
 use std::sync::atomic::Ordering;
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
-use crate::lucidmq::{ConsumerGroup};
-use crate::message::{Message};
-
 
 pub struct Consumer {
     topic: String,
@@ -19,13 +18,20 @@ impl Consumer {
     /**
      * Initializes a new consumer
      */
-    pub fn new(directory: String, topic_name: String, new_consumer_group: Arc<ConsumerGroup>, callback: Box<dyn Fn()>) -> Consumer {
-        let cl = Commitlog::new(directory);
+    pub fn new(
+        directory: String,
+        topic_name: String,
+        new_consumer_group: Arc<ConsumerGroup>,
+        callback: Box<dyn Fn()>,
+        max_segment_size_bytes: u64,
+        max_commitlog_size_bytes: u64,
+    ) -> Consumer {
+        let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size_bytes);
         let mut consumer = Consumer {
             topic: topic_name,
             commitlog: cl,
             consumer_group: new_consumer_group,
-            cb: callback
+            cb: callback,
         };
         consumer.consumer_group_initialize();
         consumer
@@ -86,7 +92,9 @@ impl Consumer {
         let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
         if n < oldest_offset {
             let new_consumer_group_offset: u32 = oldest_offset.try_into().unwrap();
-            self.consumer_group.offset.store(new_consumer_group_offset, Ordering::SeqCst);
+            self.consumer_group
+                .offset
+                .store(new_consumer_group_offset, Ordering::SeqCst);
             self.save_info();
         }
     }
