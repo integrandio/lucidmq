@@ -16,8 +16,8 @@ name = "lucidmq"
 path = "src/lib.rs"
 
 [dependencies]
-nolan = { path = "../nolan" }
-bincode="1.3.3"
+nolan = "0.1.0"
+bincode = "1.3.3"
 serde = { version = "1.0", features = ["derive", "rc"] }
 log = "0.4"
 rand = "0.8.5"
