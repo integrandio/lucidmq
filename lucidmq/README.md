@@ -14,7 +14,7 @@ There are 4 main components that LucidMQ exposes:
 
 - Message: Similar to kafka all messages utilize a key, value and timestamp format.
 
-```Rust
+```rust
 use lucidmq::{LucidMQ, Message};
 
 // Create our lucidmq instance
