@@ -186,7 +186,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "log",
- "nolan",
+ "nolan 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "serde",
 ]
@@ -210,6 +210,17 @@ checksum = "2dffe52ecf27772e601905b7522cb4ef790d2cc203488bbd0e2fe85fcb74566d"
 [[package]]
 name = "nolan"
 version = "0.1.0"
+dependencies = [
+ "bincode",
+ "log",
+ "serde",
+]
+
+[[package]]
+name = "nolan"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5cd39bf546e9459774bb62ed90141cf80ccfbad83e0c20cc96d7d94a1a5c18fb"
 dependencies = [
  "bincode",
  "log",
@@ -296,7 +307,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "log",
- "nolan",
+ "nolan 0.1.0",
  "pyo3",
  "rand",
  "serde",
