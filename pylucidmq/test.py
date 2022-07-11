@@ -8,8 +8,8 @@ def test_message():
     y = x.serialize_message()
     print(y)
 
-def test_producer():
-    lucidmq = pylucidmq.LucidMQ("../test_log")
+def test_producer(lucidmq):
+    lucidmq = pylucidmq.LucidMQ("../test_log", 1000, 500)
     producer = lucidmq.new_producer("topic1")
     for x in range(10):
         key = "key{0}".format(x).encode()
@@ -18,15 +18,21 @@ def test_producer():
         producer.produce_message(x)
         time.sleep(1)
 
-def test_consumer():
-    lucidmq = pylucidmq.LucidMQ("../test_log")
-    consumer = lucidmq.new_consumer("topic1", "group3")
-    messages = consumer.poll(1000)
+def test_consumer(lucidmq):
+    consumer = lucidmq.new_consumer("topic1", "group7")
+    messages = consumer.fetch(0, 5)
     for message in messages:
         key = bytes(message.key)
         value = bytes(message.value)
         print(key.decode("utf-8"))
         print(value.decode("utf-8"))
+    # messages = consumer.poll(1000)
+    # for message in messages:
+    #     key = bytes(message.key)
+    #     value = bytes(message.value)
+    #     print(key.decode("utf-8"))
+    #     print(value.decode("utf-8"))
 
-test_producer()
-test_consumer()
+lucidmq = pylucidmq.LucidMQ("../test_log", 1000, 500)
+# test_producer(lucidmq)
+test_consumer(lucidmq)

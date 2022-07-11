@@ -38,7 +38,8 @@ impl Consumer {
     }
 
     /**
-     * Reads from the commitlog for a set amount of time and returns a vector is messages when complete.
+     * Reads from the commitlog for a set amount of time and returns a vector is messages when complete. 
+     * The offset where the starting read takes place is based off of the consumer group offset
      */
     pub fn poll(&mut self, timeout: u64) -> Vec<Message> {
         //Let's check if there are any new segments added.
@@ -77,10 +78,46 @@ impl Consumer {
     }
 
     /**
+     * Given a starting offset and a max_records to return, fetch will read all of the offsets and return the records until there is no more records
+     * or the max records limit has been hit.
+     */
+    pub fn fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Message> {
+        self.commitlog.reload_segments();
+        let mut offset = starting_offset;
+        let mut records: Vec<Message> = Vec::new();
+        while records.len() < max_records {
+            match self.commitlog.read(offset) {
+                Ok(buffer) => {
+                    let message = Message::deserialize_message(&buffer);
+                    records.push(message);
+                    offset += 1;
+                }
+                Err(err) => {
+                    if err == "Offset does not exist in the commitlog" {
+                        break;
+                    } else {
+                        panic!("Unexpected error found")
+                    }
+                }
+            };
+        }
+        records
+    }
+
+    /**
      * Returns the topic that the consumer is consuming from.
      */
     pub fn get_topic(&self) -> String {
         self.topic.clone()
+    }
+
+    pub fn get_oldest_offset(&mut self) -> usize{
+        self.commitlog.get_oldest_offset()
+    }
+
+
+    pub fn get_latest_offset(&mut self) -> usize{
+        self.commitlog.get_latest_offset()
     }
 
     /**
