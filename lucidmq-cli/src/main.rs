@@ -16,7 +16,12 @@ fn run_producer(topic: String) {
     for i in 0..100 {
         let key = "producer1".to_string();
         let key_bytes = key.as_bytes();
-        let value = format!("value{}", i);
+        let value = format!("
+        {{
+            \"id\": {},
+            \"price\": {},
+            \"description\": \"my description\"
+        }}", i, i*100);
         let value_bytes = value.as_bytes();
         let message = Message::new(key_bytes, value_bytes, None);
         producer.produce_message(message);

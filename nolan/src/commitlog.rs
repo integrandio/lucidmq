@@ -312,6 +312,16 @@ impl Commitlog {
         let offset = oldest_segment.starting_offset;
         usize::from(offset)
     }
+
+    /**
+     * Returns the first offset of the first segment.
+     */
+    pub fn get_latest_offset(&mut self) -> usize {
+        let index = self.current_segment_index.get_mut();
+        let latest_segment =  &self.segments[*index];
+        let offset = latest_segment.next_offset;
+        usize::from(offset)
+    }
 }
 
 #[cfg(test)]
