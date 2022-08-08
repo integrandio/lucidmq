@@ -96,15 +96,16 @@ The repo is made up of a base library written in Rust and other client libraries
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq-cli      # CLI library for running LucidMQ as an executable
     ├── lucidmq          # Rust Client Library
-    └── pylucidmq        # Python Client Library
+    ├── pylucidmq        # Python Client Library
+    └── node-lucidmq     # Node Client Library
 
 ---
 
 ## What's Next?
 
-- Implement tests
-- Implement JavaScript library using web assembly
-- Implement C library
+- [ ] Implement tests
+- [X] Implement javascript/node library
+- [ ] Build a documentation website in docusaurus
 
 LucidMQ design
 
