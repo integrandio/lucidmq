@@ -49,7 +49,7 @@ jobs:
     - uses: messense/maturin-action@v1
       with:
         command: build
-        args: --release -o dist --universal2 -m ./pylucidmq/Cargo.toml∂
+        args: --release -o dist --universal2 -m ./pylucidmq/Cargo.toml
     - name: Upload wheels
       uses: actions/upload-artifact@v2
       with:
