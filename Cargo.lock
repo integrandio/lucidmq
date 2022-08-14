@@ -208,11 +208,11 @@ dependencies = [
 
 [[package]]
 name = "lucidmq"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "bincode",
  "log",
- "nolan",
+ "nolan 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "serde",
 ]
@@ -296,14 +296,25 @@ dependencies = [
  "napi",
  "napi-build",
  "napi-derive",
- "nolan",
+ "nolan 0.1.1",
  "rand",
  "serde",
 ]
 
 [[package]]
 name = "nolan"
-version = "0.1.0"
+version = "0.1.1"
+dependencies = [
+ "bincode",
+ "log",
+ "serde",
+]
+
+[[package]]
+name = "nolan"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92ebc5b1cd1db27adc9abd4a269b87faf54229306950de2a1825bbc4673f1746"
 dependencies = [
  "bincode",
  "log",
@@ -390,7 +401,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "log",
- "nolan",
+ "nolan 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "pyo3",
  "rand",
  "serde",
