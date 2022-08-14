@@ -15,16 +15,13 @@ on:
 jobs:
   linux:
     runs-on: ubuntu-latest
-    defaults:
-      run: 
-        working-directory: ./pylucidmq
     steps:
     - uses: actions/checkout@v2
     - uses: messense/maturin-action@v1
       with:
         manylinux: auto
         command: build
-        args: --release -o dist
+        args: --release -o dist -m ./pylucidmq/Cargo.toml
         context: ./pylucidmq
     - name: Upload wheels
       uses: actions/upload-artifact@v2
@@ -48,15 +45,12 @@ jobs:
 
   macos:
     runs-on: macos-latest
-    defaults:
-      run: 
-        working-directory: ./pylucidmq
     steps:
     - uses: actions/checkout@v2
     - uses: messense/maturin-action@v1
       with:
         command: build
-        args: --release -o dist --universal2
+        args: --release -o dist --universal2 -m ./pylucidmq/Cargo.toml
         context: ./pylucidmq
     - name: Upload wheels
       uses: actions/upload-artifact@v2
@@ -83,4 +77,3 @@ jobs:
         with:
           command: upload
           args: --skip-existing *
-          context: ./pylucidmq
