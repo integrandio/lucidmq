@@ -1,6 +1,6 @@
 [package]
 name = "nolan"
-version = "0.1.0"
+version = "0.1.1"
 description = "Commitlog/WAL Implmentation and Powerful Abstractions"
 edition = "2021"
 authors = ["Burak Kiran <burakkiran95@gmail.com>"]
