@@ -2,7 +2,7 @@
 
 ## What is it
 
-This is the python client library for using LucidMQ
+This is the python implementation and client library using LucidMQ
 
 ## Installation
 
