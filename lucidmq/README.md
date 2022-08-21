@@ -10,7 +10,7 @@ There are 4 main components that LucidMQ exposes:
 
 - Producer: Given a topic, the producer will write persistent messages to that topic.
 
-- Consumer: Given a topic, the consumer will read messages from that topic. It will know it's last read offset which is persisted. ALl consumers start at the oldest offset.
+- Consumer: Given a topic, the consumer will read messages from that topic. It will know it's last read offset which is persisted, by using the consumergroup. ALl consumer groups start at the oldest offset.
 
 - Message: Similar to kafka all messages utilize a key, value and timestamp format.
 
