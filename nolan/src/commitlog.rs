@@ -318,7 +318,7 @@ impl Commitlog {
      */
     pub fn get_latest_offset(&mut self) -> usize {
         let index = self.current_segment_index.get_mut();
-        let latest_segment =  &self.segments[*index];
+        let latest_segment = &self.segments[*index];
         let offset = latest_segment.next_offset;
         usize::from(offset)
     }
@@ -331,9 +331,20 @@ mod commitlog_tests {
     use crate::commitlog::Commitlog;
 
     #[test]
-    fn it_works() {
+    fn test_new_commitlog() {
         let test_dir_path = String::from("test");
         Commitlog::new(test_dir_path.clone(), 100, 1000);
         assert!(Path::new(&test_dir_path).is_dir());
+    }
+
+    #[test]
+    fn test_append() {
+        let test_directory = String::from("test");
+        let mut cl = Commitlog::new(test_directory.clone(), 100, 1000);
+        let test_data = "producer1".as_bytes();
+        cl.append(test_data);
+
+        let retrived_message = cl.read(0).expect("Unable to retrieve message");
+        assert_eq!(test_data, &*retrived_message);
     }
 }

@@ -228,14 +228,6 @@ impl Segment {
         Ok(true)
     }
 
-    // /**
-    //  * Closes the files to log and the index.
-    //  */
-    // // fn close(&self) {
-    // //     drop(&self.log_file);
-    // //     self.index.close();
-    // // }
-
     /**
      * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
      */
@@ -250,3 +242,19 @@ impl Segment {
         String::from(new_file.to_str().expect("unable to convert path to string"))
     }
 }
+
+// #[cfg(test)]
+// mod segment_tests {
+//     use std::path::Path;
+
+//     use crate::segment::Segment;
+
+//     #[test]
+//     fn test_new_segment() {
+//         let test_dir_path = String::from("test");
+//         Segment::new(test_dir_path.clone(), 100, 1000);
+//         //Check if the directory exists
+//         assert!(Path::new(&test_dir_path).is_dir());
+//         //Check if the segment file and index file exists
+//     }
+// }
