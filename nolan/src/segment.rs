@@ -146,8 +146,9 @@ impl Segment {
 
     /**
      * Given a byte array, write that data to the corresponding log and index.
+     * Return the offset in the segment that was written to.
      */
-    pub fn write(&mut self, data: &[u8]) -> Result<bool, SegmentError> {
+    pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
         let computed_size_bytes = self
             .log_file
             .metadata()
@@ -176,8 +177,9 @@ impl Segment {
                 SegmentError::new("unable to add entry to index")
             })?;
         self.position += written_bytes;
+        let offset_written = self.next_offset;
         self.next_offset += 1;
-        Ok(true)
+        Ok(offset_written)
     }
 
     /**

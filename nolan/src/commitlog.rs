@@ -46,24 +46,27 @@ impl Commitlog {
     /**
      * Given a byte array, attempt to add to our commitlog on the latest segment
      */
-    pub fn append(&mut self, data: &[u8]) {
+    pub fn append(&mut self, data: &[u8]) -> u16 {
         let total_segment = self.segments.len();
         if total_segment == 0 {
             let segment = Segment::new(self.directory.clone(), self.max_segment_size, 0);
-            //self.current_segment = Some(Arc::new(Mutex::new(&segment)));
             self.segments.push(segment);
             self.current_segment_index = AtomicUsize::new(0);
         }
         let index = self.current_segment_index.get_mut();
+
         // Properly error handle this
         let current_segment = self
             .segments
             .get_mut(*index)
             .expect("Unable to get current segment");
+        
         match current_segment.write(data) {
-            Ok(_thing) => {
+            Ok(segment_offset_written) => {
                 info!("Successfully wrote to segment");
+                let commitlog_written_offset = current_segment.starting_offset + segment_offset_written;
                 self.clean();
+                return commitlog_written_offset;
             }
             Err(err) => {
                 let split_err = SegmentError::new(
@@ -72,7 +75,8 @@ impl Commitlog {
                 if err == split_err {
                     self.split();
                     self.append(data);
-                    return;
+                    //This should never hit, since this is a recursive call....
+                    //return 0;
                 }
                 panic!("Another error showed up from here!!")
             }
