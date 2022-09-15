@@ -46,24 +46,28 @@ impl Commitlog {
     /**
      * Given a byte array, attempt to add to our commitlog on the latest segment
      */
-    pub fn append(&mut self, data: &[u8]) {
+    pub fn append(&mut self, data: &[u8]) -> u16 {
         let total_segment = self.segments.len();
         if total_segment == 0 {
             let segment = Segment::new(self.directory.clone(), self.max_segment_size, 0);
-            //self.current_segment = Some(Arc::new(Mutex::new(&segment)));
             self.segments.push(segment);
             self.current_segment_index = AtomicUsize::new(0);
         }
         let index = self.current_segment_index.get_mut();
+
         // Properly error handle this
         let current_segment = self
             .segments
             .get_mut(*index)
             .expect("Unable to get current segment");
+
         match current_segment.write(data) {
-            Ok(_thing) => {
+            Ok(segment_offset_written) => {
                 info!("Successfully wrote to segment");
+                let commitlog_written_offset =
+                    current_segment.starting_offset + segment_offset_written;
                 self.clean();
+                return commitlog_written_offset;
             }
             Err(err) => {
                 let split_err = SegmentError::new(
@@ -72,9 +76,12 @@ impl Commitlog {
                 if err == split_err {
                     self.split();
                     self.append(data);
-                    return;
+                    //This should never hit, since this is a recursive call....
+                    return 0;
+                } else {
+                    panic!("{}", err)
                 }
-                panic!("Another error showed up from here!!")
+                
             }
         }
     }
@@ -308,6 +315,10 @@ impl Commitlog {
      * Returns the first offset of the first segment.
      */
     pub fn get_oldest_offset(&mut self) -> usize {
+        // If there is no segments intialized, just return 0
+        if self.segments.len() == 0 {
+            return 0;
+        }
         let oldest_segment = &self.segments[0];
         let offset = oldest_segment.starting_offset;
         usize::from(offset)
@@ -318,7 +329,7 @@ impl Commitlog {
      */
     pub fn get_latest_offset(&mut self) -> usize {
         let index = self.current_segment_index.get_mut();
-        let latest_segment =  &self.segments[*index];
+        let latest_segment = &self.segments[*index];
         let offset = latest_segment.next_offset;
         usize::from(offset)
     }
@@ -326,14 +337,53 @@ impl Commitlog {
 
 #[cfg(test)]
 mod commitlog_tests {
-    use std::path::Path;
-
     use crate::commitlog::Commitlog;
+    use std::path::Path;
+    use tempdir::TempDir;
 
     #[test]
-    fn it_works() {
-        let test_dir_path = String::from("test");
+    fn test_new_commitlog() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
         Commitlog::new(test_dir_path.clone(), 100, 1000);
         assert!(Path::new(&test_dir_path).is_dir());
+    }
+
+    #[test]
+    fn test_append() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl = Commitlog::new(test_dir_path.clone(), 100, 1000);
+        let test_data = "producer1".as_bytes();
+        cl.append(test_data);
+
+        let retrived_message = cl.read(0).expect("Unable to retrieve message");
+        assert_eq!(test_data, &*retrived_message);
+    }
+
+    #[test]
+    fn test_split() {
+        let number_of_iterations = 20;
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl = Commitlog::new(test_dir_path.clone(), 100, 1000);
+        
+        
+        for i in 0..number_of_iterations {
+            let string_message = format!("myTestMessage{}", i);
+            let test_data = string_message.as_bytes();
+            cl.append(test_data);
+        }
+
+        for i in 0..number_of_iterations {
+            let string_message = format!("myTestMessage{}", i);
+            println!("{string_message}");
+            let test_data = string_message.as_bytes();
+            let retrived_message = cl.read(i).expect("Unable to retrieve message");
+            assert_eq!(test_data, &*retrived_message);
+        }
     }
 }
