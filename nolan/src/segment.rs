@@ -146,8 +146,9 @@ impl Segment {
 
     /**
      * Given a byte array, write that data to the corresponding log and index.
+     * Return the offset in the segment that was written to.
      */
-    pub fn write(&mut self, data: &[u8]) -> Result<bool, SegmentError> {
+    pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
         let computed_size_bytes = self
             .log_file
             .metadata()
@@ -176,8 +177,9 @@ impl Segment {
                 SegmentError::new("unable to add entry to index")
             })?;
         self.position += written_bytes;
+        let offset_written = self.next_offset;
         self.next_offset += 1;
-        Ok(true)
+        Ok(offset_written)
     }
 
     /**
@@ -228,14 +230,6 @@ impl Segment {
         Ok(true)
     }
 
-    // /**
-    //  * Closes the files to log and the index.
-    //  */
-    // // fn close(&self) {
-    // //     drop(&self.log_file);
-    // //     self.index.close();
-    // // }
-
     /**
      * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
      */
@@ -250,3 +244,19 @@ impl Segment {
         String::from(new_file.to_str().expect("unable to convert path to string"))
     }
 }
+
+// #[cfg(test)]
+// mod segment_tests {
+//     use std::path::Path;
+
+//     use crate::segment::Segment;
+
+//     #[test]
+//     fn test_new_segment() {
+//         let test_dir_path = String::from("test");
+//         Segment::new(test_dir_path.clone(), 100, 1000);
+//         //Check if the directory exists
+//         assert!(Path::new(&test_dir_path).is_dir());
+//         //Check if the segment file and index file exists
+//     }
+// }
