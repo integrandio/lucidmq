@@ -36,8 +36,8 @@ impl ConsumerGroup {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Topic {
-    name: String,
-    directory: String,
+    pub name: String,
+    pub directory: String,
     consumer_groups: Vec<Arc<ConsumerGroup>>,
 }
 
@@ -62,7 +62,7 @@ impl Topic {
         }
     }
 
-    pub fn load_consumer_group(&mut self, consumer_group_name: String) -> Arc<ConsumerGroup> {
+    fn load_consumer_group(&mut self, consumer_group_name: String) -> Arc<ConsumerGroup> {
         for group in &self.consumer_groups {
             if group.name == consumer_group_name {
                 return group.clone();
@@ -73,7 +73,7 @@ impl Topic {
         new_gc
     }
 
-    pub fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
+    fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
         let mut new_consumer_groups = Vec::new();
         for cg in &topic_ref.consumer_groups {
             new_consumer_groups.push(cg.clone());
@@ -121,6 +121,11 @@ impl LucidMQ {
                 lucidmq
             }
         }
+    }
+
+    pub fn new_topic(&self, topic_name: String) -> Topic {
+        let topic = Topic::new(topic_name, self.base_directory.clone());
+        topic
     }
 
     pub fn new_producer(&mut self, topic: String) -> Producer {
