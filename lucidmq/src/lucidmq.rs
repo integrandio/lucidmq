@@ -88,9 +88,9 @@ impl Topic {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LucidMQ {
-    base_directory: String,
-    max_segment_bytes: u64,
-    max_topic_size: u64,
+    pub base_directory: String,
+    pub max_segment_bytes: u64,
+    pub max_topic_size: u64,
     topics: Arc<RwLock<Vec<Topic>>>,
 }
 
