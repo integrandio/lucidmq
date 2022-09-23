@@ -36,8 +36,8 @@ impl ConsumerGroup {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Topic {
-    name: String,
-    directory: String,
+    pub name: String,
+    pub directory: String,
     consumer_groups: Vec<Arc<ConsumerGroup>>,
 }
 
@@ -62,7 +62,7 @@ impl Topic {
         }
     }
 
-    pub fn load_consumer_group(&mut self, consumer_group_name: String) -> Arc<ConsumerGroup> {
+    fn load_consumer_group(&mut self, consumer_group_name: String) -> Arc<ConsumerGroup> {
         for group in &self.consumer_groups {
             if group.name == consumer_group_name {
                 return group.clone();
@@ -73,7 +73,7 @@ impl Topic {
         new_gc
     }
 
-    pub fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
+    fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
         let mut new_consumer_groups = Vec::new();
         for cg in &topic_ref.consumer_groups {
             new_consumer_groups.push(cg.clone());
@@ -88,9 +88,9 @@ impl Topic {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LucidMQ {
-    base_directory: String,
-    max_segment_bytes: u64,
-    max_topic_size: u64,
+    pub base_directory: String,
+    pub max_segment_bytes: u64,
+    pub max_topic_size: u64,
     topics: Arc<RwLock<Vec<Topic>>>,
 }
 
@@ -121,6 +121,16 @@ impl LucidMQ {
                 lucidmq
             }
         }
+    }
+
+    pub fn new_topic(&self, topic_name: String) -> String {
+        let topic = Topic::new(topic_name, self.base_directory.clone());
+        //TODO: error handle this
+        fs::create_dir_all(&topic.directory).expect("Unable to create directory");
+        let td = topic.directory.clone();
+        self.topics.write().unwrap().push(topic);
+        td
+        
     }
 
     pub fn new_producer(&mut self, topic: String) -> Producer {
