@@ -129,6 +129,7 @@ impl LucidMQ {
         fs::create_dir_all(&topic.directory).expect("Unable to create directory");
         let td = topic.directory.clone();
         self.topics.write().unwrap().push(topic);
+        self.flush();
         td
         
     }
