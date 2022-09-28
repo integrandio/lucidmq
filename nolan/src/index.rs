@@ -15,8 +15,8 @@ use std::io::SeekFrom;
  */
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct Entry {
-    start: u32,
-    total: u32,
+    pub start: u32,
+    pub total: u32,
 }
 
 pub struct Index {

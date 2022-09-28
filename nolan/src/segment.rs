@@ -11,14 +11,26 @@ use std::str;
 use crate::index::Index;
 use crate::nolan_errors::SegmentError;
 
+/// Segment is a data type that holds all of the byte data within nolan
+/// It is made up of 2 main pieces the log and the index. The log is what actually
+/// user supplied data is stored. The index is used to quickly retrieve information
+/// that is persisted.
 pub struct Segment {
+    /// The file name used by both the log and index file
     pub file_name: String,
+    /// Current position of the cursor within the log file
     pub position: u32,
+    /// Max size of the segment file 
     max_bytes: u64,
+    /// Starting offset within the segment
     pub starting_offset: u16,
+    /// Next offset within the segment
     pub next_offset: u16,
+    /// Parent directory/Commitlog directory
     pub directory: String,
+    /// File ref to the segment file
     log_file: File,
+    /// Index ref to the index file
     index: Index,
 }
 
@@ -34,9 +46,9 @@ impl Segment {
         let log_file_name = Self::create_segment_file_name(
             base_directory.clone(),
             offset,
-            String::from(LOG_SUFFIX),
+            LOG_SUFFIX,
         );
-        let file = OpenOptions::new()
+        let log_file = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
@@ -47,7 +59,7 @@ impl Segment {
         let index_file_name = Self::create_segment_file_name(
             base_directory.clone(),
             offset,
-            String::from(INDEX_SUFFIX),
+            INDEX_SUFFIX,
         );
         let new_index = Index::new(index_file_name);
 
@@ -58,7 +70,7 @@ impl Segment {
             starting_offset: offset,
             next_offset: offset,
             directory: base_directory,
-            log_file: file,
+            log_file: log_file,
             index: new_index,
         }
     }
@@ -70,6 +82,7 @@ impl Segment {
     pub fn load_segment(
         base_directory: String,
         segment_base: String,
+        max_segment_bytes: u64
     ) -> Result<Segment, SegmentError> {
         let segment_offset = segment_base.parse::<u16>().map_err(|e| {
             error!("{}", e);
@@ -78,7 +91,7 @@ impl Segment {
         let log_file_name = Self::create_segment_file_name(
             base_directory.clone(),
             segment_offset,
-            String::from(LOG_SUFFIX),
+            LOG_SUFFIX,
         );
 
         let file = OpenOptions::new()
@@ -105,7 +118,7 @@ impl Segment {
         let index_file_name = Self::create_segment_file_name(
             base_directory.clone(),
             segment_offset,
-            String::from(INDEX_SUFFIX),
+            INDEX_SUFFIX,
         );
         let mut loaded_index = Index::new(index_file_name);
 
@@ -118,7 +131,7 @@ impl Segment {
         let segment = Segment {
             file_name: log_file_name,
             position: current_segment_postion,
-            max_bytes: 255,
+            max_bytes: max_segment_bytes,
             starting_offset: segment_offset,
             next_offset: total_entries,
             directory: base_directory,
@@ -236,7 +249,7 @@ impl Segment {
     pub fn create_segment_file_name(
         directory: String,
         starting_offset: u16,
-        suffix: String,
+        suffix: &str,
     ) -> String {
         let file_name = format!("{:0>5}{}", starting_offset, suffix);
         let new_file = Path::new(&directory).join(file_name);

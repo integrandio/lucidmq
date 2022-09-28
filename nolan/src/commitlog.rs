@@ -7,15 +7,16 @@ use std::sync::atomic::AtomicUsize;
 use crate::cleaner::Cleaner;
 use crate::nolan_errors::SegmentError;
 use crate::segment::Segment;
+use crate::virtual_segment::VirtualSegment;
 use std::collections::HashMap;
 
-#[derive(Default)]
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
     cleaner: Cleaner,
     max_segment_size: u64,
     current_segment_index: AtomicUsize,
+    current_segment: VirtualSegment
 }
 
 impl Commitlog {
@@ -35,7 +36,8 @@ impl Commitlog {
             segments: vec,
             cleaner: new_cleaner,
             max_segment_size: max_segment_size_bytes,
-            ..Default::default()
+            current_segment_index: AtomicUsize::default(),
+            current_segment: VirtualSegment::new(base_directory.clone(), max_segment_size_bytes, 0)
         };
         //TODO: error handle this
         fs::create_dir_all(base_directory).expect("Unable to create directory");
@@ -122,7 +124,7 @@ impl Commitlog {
             }
         }
         for segment_file in valid_segment_files {
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file)
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file, self.max_segment_size)
                 .expect("unable to load segment");
             self.segments.push(loaded_segment);
         }
@@ -136,6 +138,8 @@ impl Commitlog {
             latest_segment_index -= 1;
             if latest_segment_index > 0 {
                 self.current_segment_index = AtomicUsize::new(latest_segment_index);
+                let current_segment_from_loaded_segments = self.segments.get(latest_segment_index).expect("thing");
+                self.current_segment = VirtualSegment::load_segment(&self.directory, &current_segment_from_loaded_segments.file_name, self.max_segment_size).expect("unable to load virtual segment");
             }
         }
 
@@ -221,7 +225,7 @@ impl Commitlog {
 
         for segment in segments_to_add {
             info!("updating a new segment {}", segment);
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment)
+            let loaded_segment = Segment::load_segment(self.directory.clone(), segment, self.max_segment_size)
                 .expect("unable to laod segment");
             self.segments.push(loaded_segment);
         }
