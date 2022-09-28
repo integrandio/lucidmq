@@ -123,12 +123,13 @@ impl LucidMQ {
         }
     }
 
-    pub fn new_topic(&self, topic_name: String) -> String {
+    pub fn new_topic(&mut self, topic_name: String) -> String {
         let topic = Topic::new(topic_name, self.base_directory.clone());
-        //TODO: error handle this
         fs::create_dir_all(&topic.directory).expect("Unable to create directory");
         let td = topic.directory.clone();
-        self.topics.write().unwrap().push(topic);
+        {
+            self.topics.write().unwrap().push(topic);
+        }
         self.flush();
         td
         
@@ -289,8 +290,8 @@ impl LucidMQ {
     }
 
     fn flush(&self) {
-        info!("Saving lucidmq state to file...");
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
+        info!("Saving lucidmq state to file {}", lucidmq_file_path.to_string_lossy());
         let encoded_data: Vec<u8> =
             bincode::serialize(&self).expect("Unable to encode lucidmq metadata");
         let mut file = OpenOptions::new()
