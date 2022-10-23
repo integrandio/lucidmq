@@ -1,20 +1,20 @@
 use std::{
     fs::OpenOptions,
-    io::{Cursor, ErrorKind, Read, Seek, SeekFrom, Write},
+    io::{Cursor, Read, Seek, SeekFrom, Write},
     path::Path,
 };
 
-use crate::{index::Entry, nolan_errors::IndexError, nolan_errors::SegmentError};
+use crate::{virtual_index::VirtualIndex, nolan_errors::SegmentError};
 use log::{error, info};
 
 pub struct VirtualSegment {
     contents: Cursor<Vec<u8>>,
     position: u32,
     max_bytes: u64,
-    starting_offset: u16,
-    next_offset: u16,
+    pub starting_offset: u16,
+    pub next_offset: u16,
     index: VirtualIndex,
-    full_log_path: String,
+    pub full_log_path: String,
 }
 
 const LOG_SUFFIX: &str = ".log";
@@ -24,7 +24,7 @@ impl VirtualSegment {
     /**
      * Create a virtual segment with the provided starting offset
      */
-    pub fn new(base_directory: String, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
+    pub fn new(base_directory: &str, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
         info!("Creating a new virtual segment");
         let log_file_path =
             Self::create_segment_file_name(&base_directory, offset, LOG_SUFFIX);
@@ -48,13 +48,14 @@ impl VirtualSegment {
      */
     pub fn load_segment(
         base_directory: &str,
-        segment_base: &str,
+        segment_offset: u16,
         max_segment_bytes: u64,
     ) -> Result<VirtualSegment, SegmentError> {
-        let segment_offset = segment_base.parse::<u16>().map_err(|e| {
-            error!("{}", e);
-            SegmentError::new("unable to parse base string into u16")
-        })?;
+        //let segment_error_str = format!("unable to parse base string {segment_offset} into u16");
+        // let segment_offset = segment_base.parse::<u16>().map_err(|e| {
+        //     error!("{}", e);
+        //     SegmentError::new(&segment_error_str)
+        // })?;
         let log_file_name =
             Self::create_segment_file_name(base_directory, segment_offset, LOG_SUFFIX);
 
@@ -198,124 +199,6 @@ impl VirtualSegment {
     }
 }
 
-struct VirtualIndex {
-    contents: Cursor<Vec<u8>>,
-    entries: Vec<Entry>,
-    full_index_file_path: String,
-}
-
-impl VirtualIndex {
-    fn new(index_path: String) -> VirtualIndex {
-        VirtualIndex {
-            contents: Cursor::new(Vec::new()),
-            entries: Vec::new(),
-            full_index_file_path: index_path,
-        }
-    }
-
-    /**
-     * Add a new entry to the index
-     */
-    fn add_entry(&mut self, start_position: u32, total_bytes: u32) -> Result<bool, IndexError> {
-        let entry = Entry {
-            start: start_position,
-            total: total_bytes,
-        };
-        let encoded_entry: Vec<u8> = bincode::serialize(&entry).map_err(|e| {
-            error!("{}", e);
-            IndexError::new("Unable to serialize entry")
-        })?;
-
-        self.entries.push(entry);
-
-        let entry_bytes: &[u8] = &encoded_entry[..];
-        self.contents.write(entry_bytes).map_err(|e| {
-            error!("{}", e);
-            IndexError::new("Unable to write entry to index file")
-        })?;
-        Ok(true)
-    }
-
-    /**
-     * Given an offset, return the entry start
-     */
-    fn return_entry_details_by_offset(&self, offset: usize) -> Result<(u64, usize), IndexError> {
-        // This can throw an exception if the offset is greater than the size of the array, how do we check?
-        let entry = self.entries[offset];
-        let start_offset: u64 = entry.start.into();
-        //TODO: error handle this correctly
-        let total_bytes: usize = usize::try_from(entry.total).map_err(|e| {
-            error!("{}", e);
-            IndexError::new("unable to convert from u32 to usize")
-        })?;
-        Ok((start_offset, total_bytes))
-    }
-
-    /// Writes the buffered data to disk.
-    pub fn flush(&self) {
-        let mut index_file = OpenOptions::new()
-            .create(true)
-            .read(false)
-            .write(true)
-            .append(false)
-            .open(self.full_index_file_path.clone())
-            .expect("Unable to create and open file");
-
-        index_file
-            .write_all(self.contents.get_ref())
-            .expect("Unable to flush contents to file");
-    }
-
-    /**
-     * Load the index into memory
-     */
-    pub fn load_index(&mut self) -> Result<u16, IndexError> {
-        let mut index_file = OpenOptions::new()
-            .create(false)
-            .read(true)
-            .write(false)
-            .append(false)
-            .open(self.full_index_file_path.clone())
-            .expect("Unable to create and open file");
-
-        index_file.seek(SeekFrom::Start(0)).map_err(|e| {
-            error!("{}", e);
-            IndexError::new("unable seek to begining of the index")
-        })?;
-        let mut circut_break: bool = false;
-        loop {
-            let mut buffer = [0; 8];
-            //TODO: error handle this correctly
-            index_file.read_exact(&mut buffer).unwrap_or_else(|error| {
-                if error.kind() == ErrorKind::UnexpectedEof {
-                    circut_break = true;
-                } else {
-                    // error!{"{}", error}
-                    // return IndexError::new("unable seek to begining of the index");
-                    panic!("{}", error)
-                }
-            });
-            if circut_break {
-                break;
-            }
-            //First write bytes to our virtual buffer
-            self.contents.write(&buffer);
-
-            //Decode the entry and add it to our entry vector
-            let decoded_entry: Entry = bincode::deserialize(&buffer).map_err(|e| {
-                error!("{}", e);
-                IndexError::new("unable to deserialize entry")
-            })?;
-            self.entries.push(decoded_entry);
-        }
-        let value = u16::try_from(self.entries.len()).map_err(|e| {
-            error!("{}", e);
-            IndexError::new("unable to convert usize to u16")
-        })?;
-        Ok(value)
-    }
-}
-
 #[cfg(test)]
 mod virtual_segment_tests {
 
@@ -323,7 +206,7 @@ mod virtual_segment_tests {
 
     #[test]
     fn test_one_message() {
-        let mut vs = VirtualSegment::new(String::from("test_dir"), 100, 0);
+        let mut vs = VirtualSegment::new("test_dir", 100, 0);
         let data = "heellos".as_bytes();
         let offset = vs
             .write(data)
@@ -337,7 +220,7 @@ mod virtual_segment_tests {
 
     #[test]
     fn test_multiple_message() {
-        let mut vs = VirtualSegment::new(String::from("test_dir"), 100, 0);
+        let mut vs = VirtualSegment::new("test_dir", 100, 0);
         let messages = ["hello", "world", "im", "here"];
         for (i, message) in messages.iter().enumerate() {
             let data = message.as_bytes();
@@ -351,25 +234,5 @@ mod virtual_segment_tests {
                 .expect("Failed to get message from virtual segment");
             assert_eq!(message.as_bytes(), &*retrieve_data);
         }
-    }
-}
-
-#[cfg(test)]
-mod virtual_index_tests {
-    use crate::virtual_segment::VirtualIndex;
-
-    #[test]
-    fn test_add_entry() {
-        let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
-
-        let start_position = 0;
-        let total_bytes = 10;
-        test_index
-            .add_entry(start_position, total_bytes)
-            .expect("Unable to add entry");
-
-        let retrieved_entry = test_index.entries.get(0).expect("Got entry");
-        assert_eq!(start_position, retrieved_entry.start);
-        assert_eq!(total_bytes, retrieved_entry.total);
     }
 }

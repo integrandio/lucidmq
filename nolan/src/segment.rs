@@ -1,10 +1,10 @@
-use log::{error, info};
+use log::{error};
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::SeekFrom;
-use std::io::Write;
+//use std::io::Write;
 use std::path::Path;
 use std::str;
 
@@ -21,7 +21,7 @@ pub struct Segment {
     /// Current position of the cursor within the log file
     pub position: u32,
     /// Max size of the segment file 
-    max_bytes: u64,
+    //max_bytes: u64,
     /// Starting offset within the segment
     pub starting_offset: u16,
     /// Next offset within the segment
@@ -38,42 +38,42 @@ const LOG_SUFFIX: &str = ".log";
 const INDEX_SUFFIX: &str = ".index";
 
 impl Segment {
-    /**
-     * Create a new segment with the provided starting offset
-     */
-    pub fn new(base_directory: String, max_segment_bytes: u64, offset: u16) -> Segment {
-        info!("Creating a new segment");
-        let log_file_name = Self::create_segment_file_name(
-            base_directory.clone(),
-            offset,
-            LOG_SUFFIX,
-        );
-        let log_file = OpenOptions::new()
-            .create(true)
-            .read(true)
-            .write(true)
-            .append(true)
-            .open(log_file_name.clone())
-            .expect("Unable to create and open file");
+    // /**
+    //  * Create a new segment with the provided starting offset
+    //  */
+    // pub fn new(base_directory: String, max_segment_bytes: u64, offset: u16) -> Segment {
+    //     info!("Creating a new segment");
+    //     let log_file_name = Self::create_segment_file_name(
+    //         base_directory.clone(),
+    //         offset,
+    //         LOG_SUFFIX,
+    //     );
+    //     let log_file = OpenOptions::new()
+    //         .create(true)
+    //         .read(true)
+    //         .write(true)
+    //         .append(true)
+    //         .open(log_file_name.clone())
+    //         .expect("Unable to create and open file");
 
-        let index_file_name = Self::create_segment_file_name(
-            base_directory.clone(),
-            offset,
-            INDEX_SUFFIX,
-        );
-        let new_index = Index::new(index_file_name);
+    //     let index_file_name = Self::create_segment_file_name(
+    //         base_directory.clone(),
+    //         offset,
+    //         INDEX_SUFFIX,
+    //     );
+    //     let new_index = Index::new(index_file_name);
 
-        Segment {
-            file_name: log_file_name,
-            position: 0,
-            max_bytes: max_segment_bytes,
-            starting_offset: offset,
-            next_offset: offset,
-            directory: base_directory,
-            log_file: log_file,
-            index: new_index,
-        }
-    }
+    //     Segment {
+    //         file_name: log_file_name,
+    //         position: 0,
+    //         //max_bytes: max_segment_bytes,
+    //         starting_offset: offset,
+    //         next_offset: offset,
+    //         directory: base_directory,
+    //         log_file: log_file,
+    //         index: new_index,
+    //     }
+    // }
 
     /**
      * Given a directory and the base name of the log and index file, load a new
@@ -82,7 +82,7 @@ impl Segment {
     pub fn load_segment(
         base_directory: String,
         segment_base: String,
-        max_segment_bytes: u64
+        //max_segment_bytes: u64
     ) -> Result<Segment, SegmentError> {
         let segment_offset = segment_base.parse::<u16>().map_err(|e| {
             error!("{}", e);
@@ -131,7 +131,7 @@ impl Segment {
         let segment = Segment {
             file_name: log_file_name,
             position: current_segment_postion,
-            max_bytes: max_segment_bytes,
+            //max_bytes: max_segment_bytes,
             starting_offset: segment_offset,
             next_offset: total_entries,
             directory: base_directory,
@@ -142,58 +142,58 @@ impl Segment {
         Ok(segment)
     }
 
-    /**
-     * Reload the segment with the most up to date data from the index.
-     */
-    pub fn reload(&mut self) -> Result<bool, SegmentError> {
-        // load the entries from the index
-        let mut total_entries = self.index.reload_index().map_err(|e| {
-            error!("{}", e);
-            SegmentError::new("unable to reload index")
-        })?;
-        //Calculate and set the next offset
-        total_entries += self.starting_offset;
-        self.next_offset = total_entries;
-        Ok(true)
-    }
+    // /**
+    //  * Reload the segment with the most up to date data from the index.
+    //  */
+    // pub fn reload(&mut self) -> Result<bool, SegmentError> {
+    //     // load the entries from the index
+    //     let mut total_entries = self.index.reload_index().map_err(|e| {
+    //         error!("{}", e);
+    //         SegmentError::new("unable to reload index")
+    //     })?;
+    //     //Calculate and set the next offset
+    //     total_entries += self.starting_offset;
+    //     self.next_offset = total_entries;
+    //     Ok(true)
+    // }
 
-    /**
-     * Given a byte array, write that data to the corresponding log and index.
-     * Return the offset in the segment that was written to.
-     */
-    pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
-        let computed_size_bytes = self
-            .log_file
-            .metadata()
-            .map_err(|e| {
-                error!("{}", e);
-                SegmentError::new("unable to reload index")
-            })?
-            .len();
-        if computed_size_bytes > self.max_bytes {
-            return Err(SegmentError::new(
-                "Write not possible. Segment log would be greater than max bytes",
-            ));
-        }
-        let u_bytes = self.log_file.write(data).map_err(|e| {
-            error!("{}", e);
-            SegmentError::new("unable to write to log file")
-        })?;
-        let written_bytes: u32 = u32::try_from(u_bytes).map_err(|e| {
-            error!("{}", e);
-            SegmentError::new("unable to convert from usize to u32")
-        })?;
-        self.index
-            .add_entry(self.position, written_bytes)
-            .map_err(|e| {
-                error!("{}", e);
-                SegmentError::new("unable to add entry to index")
-            })?;
-        self.position += written_bytes;
-        let offset_written = self.next_offset;
-        self.next_offset += 1;
-        Ok(offset_written)
-    }
+    // /**
+    //  * Given a byte array, write that data to the corresponding log and index.
+    //  * Return the offset in the segment that was written to.
+    //  */
+    // pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
+    //     let computed_size_bytes = self
+    //         .log_file
+    //         .metadata()
+    //         .map_err(|e| {
+    //             error!("{}", e);
+    //             SegmentError::new("unable to reload index")
+    //         })?
+    //         .len();
+    //     if computed_size_bytes > self.max_bytes {
+    //         return Err(SegmentError::new(
+    //             "Write not possible. Segment log would be greater than max bytes",
+    //         ));
+    //     }
+    //     let u_bytes = self.log_file.write(data).map_err(|e| {
+    //         error!("{}", e);
+    //         SegmentError::new("unable to write to log file")
+    //     })?;
+    //     let written_bytes: u32 = u32::try_from(u_bytes).map_err(|e| {
+    //         error!("{}", e);
+    //         SegmentError::new("unable to convert from usize to u32")
+    //     })?;
+    //     self.index
+    //         .add_entry(self.position, written_bytes)
+    //         .map_err(|e| {
+    //             error!("{}", e);
+    //             SegmentError::new("unable to add entry to index")
+    //         })?;
+    //     self.position += written_bytes;
+    //     let offset_written = self.next_offset;
+    //     self.next_offset += 1;
+    //     Ok(offset_written)
+    // }
 
     /**
      * Given an offset, find the entry in the index and get the bytes fromt he log

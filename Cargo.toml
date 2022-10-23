@@ -3,7 +3,5 @@
 members = [
     "nolan",
     "lucidmq",
-    "pylucidmq",
-    "lucidmq-cli",
-    "node-lucidmq"
+    "lucidmq-cli"
 ]
