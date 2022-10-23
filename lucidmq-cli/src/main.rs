@@ -6,6 +6,13 @@ use std::str;
 use std::thread;
 use std::time::Duration;
 
+fn create_topic(topic: String) {
+    let base_dir = String::from("../test_log");
+    let mut lucidmq = LucidMQ::new(base_dir, 1000, 5000);
+
+    lucidmq.new_topic(topic);
+}
+
 fn run_producer(topic: String) {
     let base_dir = String::from("../test_log");
     let mut lucidmq = LucidMQ::new(base_dir, 1000, 5000);
@@ -61,6 +68,12 @@ fn cli() -> Command<'static> {
         .allow_external_subcommands(true)
         .allow_invalid_utf8_for_external_subcommands(true)
         .subcommand(
+            Command::new("topic")
+                .about("Create a new topic")
+                .arg(arg!(<TOPIC> "The topic name you want to create"))
+                .arg_required_else_help(true),
+        )
+        .subcommand(
             Command::new("produce")
                 .about("produce messages")
                 .arg(arg!(<TOPIC> "The topic you want to produce to"))
@@ -81,6 +94,11 @@ fn main() {
     let matches = cli().get_matches();
 
     match matches.subcommand() {
+        Some(("topic", sub_matches)) => {
+            let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
+            println!("Creating topic {}", topic_name);
+            create_topic(topic_name.to_string());
+        }
         Some(("produce", sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
             println!("producing to {}", topic_name);
