@@ -122,7 +122,7 @@ impl LucidMQ {
             }
         }
     }
-
+    
     pub fn new_topic(&mut self, topic_name: String) -> String {
         let topic = Topic::new(topic_name, self.base_directory.clone());
         fs::create_dir_all(&topic.directory).expect("Unable to create directory");
