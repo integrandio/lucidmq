@@ -307,7 +307,7 @@ impl Commitlog {
     /**
      * Returns the first offset of the first segment.
      */
-    pub fn get_oldest_offset(&mut self) -> usize {
+    pub fn get_oldest_offset(&self) -> usize {
         // If there is no segments intialized, just return 0
         if self.segments.len() == 0 {
             return 0;
@@ -320,7 +320,7 @@ impl Commitlog {
     /**
      * Returns the first offset of the first segment.
      */
-    pub fn get_latest_offset(&mut self) -> usize {
+    pub fn get_latest_offset(&self) -> usize {
         let offset: u16 = self.current_segment.next_offset;
         usize::from(offset)
     }

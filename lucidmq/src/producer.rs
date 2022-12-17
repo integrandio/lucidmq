@@ -1,39 +1,27 @@
-use nolan::Commitlog;
-use std::sync::Mutex;
-
-use crate::message::Message;
+use std::{sync::{Arc, Mutex}};
+use crate::{message::Message, lucid::Topic};
 
 pub struct Producer {
-    topic: String,
-    commitlog: Mutex<Commitlog>,
+    topic: Arc<Mutex<Topic>>
 }
 
 impl Producer {
-    pub fn new(
-        directory: String,
-        topic_name: String,
-        max_segment_size_bytes: u64,
-        max_commitlog_size: u64,
-    ) -> Producer {
-        let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size);
+    pub fn new( producer_topic: Arc<Mutex<Topic>>) -> Producer {
         Producer {
-            topic: topic_name,
-            commitlog: Mutex::new(cl),
+            topic: producer_topic
         }
     }
 
     pub fn produce_message(&mut self, mut message: Message) -> u16 {
         let message_bytes = message.serialize_message();
-        let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
-        cl.append(&message_bytes)
+        self.topic.lock().unwrap().commitlog.append(&message_bytes)
     }
 
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> u16 {
-        let mut cl = self.commitlog.lock().expect("lock has been poisoned...");
-        cl.append(bytes)
+        self.topic.lock().unwrap().commitlog.append(&bytes)
     }
 
     pub fn get_topic(&self) -> String {
-        self.topic.clone()
+        self.topic.lock().unwrap().name.clone()
     }
 }
