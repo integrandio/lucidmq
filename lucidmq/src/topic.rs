@@ -21,7 +21,7 @@ impl ConsumerGroup {
         }
     }
 
-    pub fn new_cg(consumer_group_name: &str, offset_in: AtomicU32) -> ConsumerGroup {
+    pub fn _new_cg(consumer_group_name: &str, offset_in: AtomicU32) -> ConsumerGroup {
         ConsumerGroup {
             name: consumer_group_name.to_string(),
             offset: offset_in,
@@ -73,7 +73,7 @@ impl Topic {
         let new_commitlog = nolan::Commitlog::new(new_path
             .to_str()
             .expect("unable to convert to string")
-            .to_string(), 1000, 100);
+            .to_string(), 100, 1000);
         Topic {
             name: topic_name,
             directory: new_path
@@ -96,7 +96,7 @@ impl Topic {
         new_gc
     }
 
-    pub fn new_topic_from_ref(topic_ref: &Topic) -> Topic {
+    pub fn _new_topic_from_ref(topic_ref: &Topic) -> Topic {
         let mut new_consumer_groups = Vec::new();
         for cg in &topic_ref.consumer_groups {
             new_consumer_groups.push(cg.clone());

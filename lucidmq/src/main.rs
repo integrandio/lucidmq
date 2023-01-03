@@ -2,6 +2,7 @@ mod topic;
 mod server;
 mod broker;
 mod message;
+mod consumer;
 use std::sync::Arc;
 use env_logger::Builder;
 use log::LevelFilter;

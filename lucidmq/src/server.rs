@@ -1,22 +1,3 @@
-//! A chat server that broadcasts a message to all connections.
-//!
-//! This is a simple line-based server which accepts WebSocket connections,
-//! reads lines from those connections, and broadcasts the lines to all other
-//! connected clients.
-//!
-//! You can test this out by running:
-//!
-//!     cargo run --bin server 127.0.0.1:12345
-//!
-//! And then in another window run:
-//!
-//!     cargo run --bin client ws://127.0.0.1:12345/
-//!
-//! You can run the second command in multiple windows and then chat between the
-//! two, seeing the messages from the other client as they're received. For all
-//! connected clients they'll all join the same room and see everyone else's
-//! messages.
-
 use std::{
     collections::HashMap,
     io::Error as IoError,
@@ -25,7 +6,6 @@ use std::{
 };
 
 use futures::SinkExt;
-use futures_channel::mpsc::{UnboundedSender};
 use futures_util::{StreamExt};
 use log::{error, info};
 
@@ -37,12 +17,12 @@ use tokio_tungstenite::tungstenite::Result;
 
 use crate::{Command, SenderType};
 
-type Tx = UnboundedSender<Message>;
+type Tx = tokio_tungstenite::WebSocketStream<TcpStream>;
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 
 pub struct LucidServer {
-    peer_map: PeerMap,
+    _peer_map: PeerMap,
     address: String,
     sender: SenderType
 }
@@ -51,7 +31,7 @@ impl LucidServer {
     pub fn new(sender: SenderType) -> LucidServer {
         let addr = "127.0.0.1:8080".to_string();
         LucidServer {
-            peer_map: PeerMap::new(Mutex::new(HashMap::new())),
+            _peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,
             sender: sender
         }
@@ -115,8 +95,9 @@ impl LucidServer {
     // }
 
 
-    async fn accept_connection(&self, stream: TcpStream, peer: SocketAddr) {
-        if let Err(e) = self.handle_connection2(peer, stream).await {
+    async fn accept_connection(&self, stream: TcpStream, addr: SocketAddr) {
+        
+        if let Err(e) = self.handle_connection2(addr, stream).await {
             match e {
                 Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
                 err => error!("Error processing connection: {}", err),
@@ -124,17 +105,22 @@ impl LucidServer {
         }
     }
     
-    async fn handle_connection2(&self, peer: SocketAddr, stream: TcpStream) -> Result<()> {
+    async fn handle_connection2(&self, addr: SocketAddr, stream: TcpStream) -> Result<()> {
         let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
-    
-        info!("New WebSocket connection: {}", peer);
+
+        //self.peer_map.lock().unwrap().insert(addr, ws_stream);
+        
+        info!("New WebSocket connection: {}", addr);
+
+        let response_message = Message::Text("ack".to_string());
     
         while let Some(msg) = ws_stream.next().await {
             let msg = msg?;
             if msg.is_binary(){
                 let command = parse_mesage(msg.to_text().unwrap());
                 self.sender.send(command).await.unwrap();
-                ws_stream.send(msg).await?;
+                ws_stream.send(response_message.clone()).await?;
+                info!("Message sent back")
             } else {
                 print!("{:?}", msg)
             }
@@ -157,7 +143,7 @@ pub fn parse_mesage(websocket_message: &str) -> Command {
             Command::Topic{ key: "topic".to_string()}
         },
         _=> {
-            info!("Cant parse thing....");
+            info!("Cant parse message.... {}", websocket_message);
             Command::Invalid{ key: "invalid".to_string()}
         }
     }

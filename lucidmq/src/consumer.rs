@@ -37,7 +37,6 @@ impl Consumer {
      */
     pub fn poll(&mut self, timeout: u64) -> Vec<Message> {
         //Let's check if there are any new segments added.
-        //let thing = self.update_consumer_group_offset();
         self.topic.write().expect("Unable to get lock on consumer topic").commitlog.reload_segments();
         info!("polling for messages");
 
@@ -50,15 +49,17 @@ impl Consumer {
         //let mut n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).expect("Unable to get offset");
         while timeout_duration > elapsed_duration {
             let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).expect("Unable to get offset");
-            match self.topic.write().expect("Unable to get lock on consumer topic").commitlog.read(n) {
+            let mut topic = self.topic.write().expect("Unable to get lock on consumer topic");
+            match topic.commitlog.read(n) {
                 Ok(buffer) => {
                     let message = Message::deserialize_message(&buffer);
                     records.push(message);
-                    //self.update_consumer_group_offset();
+                    //self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
+                    self.update_consumer_group_offset();
                 }
                 Err(err) => {
                     if err == "Offset does not exist in the commitlog" {
-                        self.topic.write().expect("Unable to get lock on consumer topic").commitlog.reload_segments();
+                        topic.commitlog.reload_segments();
                         thread::sleep(ten_millis);
                         elapsed_duration = start_time.elapsed();
                     } else {
@@ -68,12 +69,7 @@ impl Consumer {
             };
         }
         if !records.is_empty() {
-            info!("Messages are not empty");
             self.save_info();
-            // TODO: clean this up, probably needs to get update when the consumer acks the message
-            for _ in 0..records.len() {
-                self.update_consumer_group_offset();
-            }
         }
         records
     }
@@ -82,7 +78,7 @@ impl Consumer {
      * Given a starting offset and a max_records to return, fetch will read all of the offsets and return the records until there is no more records
      * or the max records limit has been hit.
      */
-    pub fn fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Message> {
+    pub fn _fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Message> {
         let commitlog = &mut self.topic.write().expect("Unable to get topic from lock").commitlog;
         commitlog.reload_segments();
         let mut offset = starting_offset;
@@ -109,16 +105,16 @@ impl Consumer {
     /**
      * Returns the topic that the consumer is consuming from.
      */
-    pub fn get_topic(&self) -> String {
+    pub fn _get_topic(&self) -> String {
         self.topic.read().expect("Unable to get lock on consumer topic").name.clone()
     }
 
-    pub fn get_oldest_offset(&mut self) -> usize{
+    pub fn _get_oldest_offset(&mut self) -> usize{
         self.topic.read().expect("Unable to get lock on consumer topic").commitlog.get_oldest_offset()
     }
 
 
-    pub fn get_latest_offset(&mut self) -> usize{
+    pub fn _get_latest_offset(&mut self) -> usize{
         self.topic.read().expect("Unable to get lock on consumer topic").commitlog.get_latest_offset()
     }
 
@@ -141,7 +137,7 @@ impl Consumer {
     /**
      Updates the consumer_group offset counter by 1.
     */
-    pub fn update_consumer_group_offset(&mut self) {
+    pub fn update_consumer_group_offset(&self) {
         self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
     }
 
