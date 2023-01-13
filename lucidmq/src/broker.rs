@@ -1,10 +1,10 @@
 use std::{sync::{Arc, RwLock}};
-use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, Command};
+use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, Command, SenderType};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
-use log::{debug, info, warn};
+use log::{debug, info, warn, error};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -66,25 +66,41 @@ impl Broker {
         }
     }
 
-    pub async fn run(mut self, mut reciever: RecieverType) {
+    pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) {
         while let Some(command) = reciever.recv().await {
+            let thing: Command;
             info!("message came through {:?}", command);
             match command {
                 Command::Produce { key: _ } => {
-                    self.handle_producer("topic1");
+                    let thing0= self.handle_producer("topic1");
+                    thing = Command::Response { key: thing0 }
                 },
                 Command::Consume { key: _ } => {
-                    self.handle_consumer("topic1");
+                    let thing0 = self.handle_consumer("topic1");
+                    thing = Command::Response { key: thing0 }
                 }
                 Command::Topic { key: _ } => {
-                    self.new_topic("topic1");
+                    let thing0 = self.new_topic("topic1");
+                    thing = Command::Response { key: thing0 }
                 }
-                _=> warn!("Unable to parse command"),
+                _=> {
+                    warn!("Unable to parse command");
+                    thing = Command::Invalid { key: "invalid".to_string() }
+                } 
+            }
+            let res = sender.send(thing).await;
+            match res {
+                Err(e) => {
+                    error!("{}", e)
+                }
+                Ok(_) => {},
             }
         }
+
+
     }
 
-    fn handle_consumer(&mut self, topic_name: &str) {
+    fn handle_consumer(&mut self, topic_name: &str) -> String{
         info!("Handling consumer message");
         let found_index = self.check_topics(topic_name);
         match found_index {
@@ -108,9 +124,10 @@ impl Broker {
                 warn!("topic does not exist");
             }
         } 
+        return "produced".to_string();
     }
 
-    fn handle_producer(&mut self, topic_name: &str) {
+    fn handle_producer(&mut self, topic_name: &str) -> String{
         info!("Handling producer message");
         let found_index = self.check_topics(topic_name);
         let mut message = Message::new("key".as_bytes(), "value".as_bytes(), None);
@@ -124,9 +141,10 @@ impl Broker {
                 warn!("topic does not exist");
             }
         }
+        return "consumed".to_string();
     }
     
-    fn new_topic(&mut self, topic_name: &str) {
+    fn new_topic(&mut self, topic_name: &str) -> String{
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(_) => {
@@ -142,6 +160,7 @@ impl Broker {
                 self.flush();
             }
         }
+        return "topiced".to_string()
         
     }
 

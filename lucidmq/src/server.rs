@@ -5,56 +5,133 @@ use std::{
     sync::{Arc, Mutex}
 };
 
-use futures::SinkExt;
+use futures::{SinkExt, stream::{SplitStream, SplitSink}};
 use futures_util::{StreamExt};
 use log::{error, info};
 
-use tokio_tungstenite::{accept_async};
+use tokio_tungstenite::{accept_async, WebSocketStream};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_tungstenite::tungstenite::Error;
 use tokio_tungstenite::tungstenite::Result;
 
-use crate::{Command, SenderType};
+use crate::{Command, SenderType, RecieverType};
 
-type Tx = tokio_tungstenite::WebSocketStream<TcpStream>;
+type Tx = SplitSink<WebSocketStream<TcpStream>, Message>;
 type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
 
 
 pub struct LucidServer {
-    _peer_map: PeerMap,
+    peer_map: PeerMap,
     address: String,
-    sender: SenderType
+    sender: SenderType,
+    reciever: RecieverType
 }
 
 impl LucidServer {
-    pub fn new(sender: SenderType) -> LucidServer {
+    pub fn new(sender: SenderType, reciever: RecieverType) -> LucidServer {
         let addr = "127.0.0.1:8080".to_string();
         LucidServer {
-            _peer_map: PeerMap::new(Mutex::new(HashMap::new())),
+            peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,
-            sender: sender
+            sender: sender,
+            reciever: reciever
         }
     }
 
-    pub async fn start(self: Arc<Self>) -> Result<(), IoError> {
+    pub async fn start(mut self) -> Result<(), IoError> {
         // Create the event loop and TCP listener we'll accept connections on.
         let try_socket = TcpListener::bind(&self.address).await;
         let listener = try_socket.expect("Failed to bind");
         println!("Listening on: {}", self.address);
+
+        tokio::spawn(async move {
+            handleResponses(self.reciever, self.peer_map)
+        });
+
     
         // Let's spawn the handling of each connection in a separate task.
         while let Ok((stream, addr)) = listener.accept().await {
-            let cloned_server = Arc::clone(&self);
+            let cloned_sender = self.sender.clone();
+            let ws_stream = accept_async(stream).await.expect("Failed to accept");
+            let (outgoing, incoming) = ws_stream.split();
+            
             tokio::spawn({
                 async move{
-                    cloned_server.accept_connection(stream, addr).await;
+                    handle_connection(incoming, cloned_sender).await;
                 }
             });
         }
         Ok(())
     }
 
+    // async fn accept_connection(&self, stream: TcpStream, addr: SocketAddr) {
+    //     let ws_stream = accept_async(stream).await.expect("Failed to accept");
+    //     let (outgoing, incoming) = ws_stream.split();
+        
+    //     if let Err(e) = self.handle_connection(incoming).await {
+    //         match e {
+    //             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
+    //             err => error!("Error processing connection: {}", err),
+    //         }
+    //     }
+    // }
+    
+
+}
+
+async fn handle_connection(mut incoming: SplitStream<WebSocketStream<TcpStream>>, sender: SenderType) -> Result<()> {
+    while let Some(msg) = incoming.next().await {
+        let msg = msg?;
+        if msg.is_binary(){
+            let command = parse_mesage(msg.to_text().unwrap());
+            sender.send(command).await.unwrap();
+            //ws_stream.send(response_message.clone()).await?;
+            info!("Message sent back")
+        } else {
+            print!("{:?}", msg)
+        }
+    }
+
+    Ok(())
+}
+
+
+async fn handleResponses(mut reciever: RecieverType, peermap: PeerMap) {
+    let outgoing: &SplitSink<WebSocketStream<TcpStream>, Message>;
+    while let Some(command) = reciever.recv().await {
+        let response_message: Message;
+        match command {
+            Command::Response { key: thing } => {
+                response_message = Message::Text(thing);
+                outgoing = peermap.lock().unwrap().get("key").expect("Key not found");
+            }, 
+            _=> {
+                response_message = Message::Text("failed".to_string());
+            }
+        }
+        outgoing.send(response_message);
+    }
+}
+
+
+pub fn parse_mesage(websocket_message: &str) -> Command {
+    info!("{:?}", websocket_message);
+    match websocket_message {
+        "produce\n" => {
+            Command::Produce{ key: "produce".to_string()}
+        },
+        "consume\n" => {
+            Command::Consume{ key: "consume".to_string()}
+        },
+        "topic\n" => {
+            Command::Topic{ key: "topic".to_string()}
+        },
+        _=> {
+            info!("Cant parse message.... {}", websocket_message);
+            Command::Invalid{ key: "invalid".to_string()}
+        }
+    }
+}
     // async fn handle_connection(&self, raw_stream: TcpStream, addr: SocketAddr) {
     //     info!("Incoming TCP connection from: {}", addr);
     
@@ -93,59 +170,3 @@ impl LucidServer {
     //     info!("{} disconnected", &addr);
     //     self.peer_map.lock().unwrap().remove(&addr);
     // }
-
-
-    async fn accept_connection(&self, stream: TcpStream, addr: SocketAddr) {
-        
-        if let Err(e) = self.handle_connection2(addr, stream).await {
-            match e {
-                Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
-                err => error!("Error processing connection: {}", err),
-            }
-        }
-    }
-    
-    async fn handle_connection2(&self, addr: SocketAddr, stream: TcpStream) -> Result<()> {
-        let mut ws_stream = accept_async(stream).await.expect("Failed to accept");
-
-        //self.peer_map.lock().unwrap().insert(addr, ws_stream);
-        
-        info!("New WebSocket connection: {}", addr);
-
-        let response_message = Message::Text("ack".to_string());
-    
-        while let Some(msg) = ws_stream.next().await {
-            let msg = msg?;
-            if msg.is_binary(){
-                let command = parse_mesage(msg.to_text().unwrap());
-                self.sender.send(command).await.unwrap();
-                ws_stream.send(response_message.clone()).await?;
-                info!("Message sent back")
-            } else {
-                print!("{:?}", msg)
-            }
-        }
-    
-        Ok(())
-    }
-}
-
-pub fn parse_mesage(websocket_message: &str) -> Command {
-    info!("{:?}", websocket_message);
-    match websocket_message {
-        "produce\n" => {
-            Command::Produce{ key: "produce".to_string()}
-        },
-        "consume\n" => {
-            Command::Consume{ key: "consume".to_string()}
-        },
-        "topic\n" => {
-            Command::Topic{ key: "topic".to_string()}
-        },
-        _=> {
-            info!("Cant parse message.... {}", websocket_message);
-            Command::Invalid{ key: "invalid".to_string()}
-        }
-    }
-    
-}
