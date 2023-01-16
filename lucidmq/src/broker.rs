@@ -1,5 +1,5 @@
 use std::{sync::{Arc, RwLock}};
-use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, Command, SenderType};
+use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, types::Command, types::SenderType};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -71,17 +71,30 @@ impl Broker {
             let thing: Command;
             info!("message came through {:?}", command);
             match command {
-                Command::Produce { key: _ } => {
-                    let thing0= self.handle_producer("topic1");
-                    thing = Command::Response { key: thing0 }
+                Command::Produce { conn_addr: addr, key: _, data } => {
+                    let thing0 = self.handle_producer("topic1");
+                    thing = Command::Response {
+                        key: thing0,
+                        conn_addr: addr,
+                        data
+                    }
                 },
-                Command::Consume { key: _ } => {
+                Command::Consume { conn_addr: addr, key: _, data  } => {
                     let thing0 = self.handle_consumer("topic1");
-                    thing = Command::Response { key: thing0 }
+                    thing = Command::Response { 
+                        key: thing0,
+                        conn_addr: addr,
+                        data
+                    }
                 }
-                Command::Topic { key: _ } => {
-                    let thing0 = self.new_topic("topic1");
-                    thing = Command::Response { key: thing0 }
+                Command::Topic { conn_addr: addr, key: _, topic_name   } => {
+                    let data = Vec::new();
+                    let thing0 = self.new_topic(&topic_name);
+                    thing = Command::Response { 
+                        key: thing0,
+                        conn_addr: addr,
+                        data
+                    }
                 }
                 _=> {
                     warn!("Unable to parse command");
@@ -96,8 +109,6 @@ impl Broker {
                 Ok(_) => {},
             }
         }
-
-
     }
 
     fn handle_consumer(&mut self, topic_name: &str) -> String{
@@ -181,74 +192,6 @@ impl Broker {
             Some(index) => Some(*index),
         }
     }
-
-    // fn sync(&self, consumer_group_in_use: &str) {
-    //     let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
-    //     let file_bytes = fs::read(lucidmq_file_path);
-    //     match file_bytes {
-    //         Ok(bytes) => {
-    //             let decoded_lucidmq: Broker =
-    //                 bincode::deserialize(&bytes).expect("Unable to deserialize message");
-    //             for topic in decoded_lucidmq.topics.read().unwrap().iter() {
-    //                 let indexed_value = self
-    //                     .topics
-    //                     .read()
-    //                     .unwrap()
-    //                     .iter()
-    //                     .position(|self_topic| self_topic.read().unwrap().name == topic.read().unwrap().name);
-    //                 match indexed_value {
-    //                     None => {
-    //                         let topic_to_add = Topic::new_topic_from_ref(&topic.read().unwrap());
-    //                         self.topics.write().unwrap().push(Arc::new(RwLock::new(topic_to_add)));
-    //                     }
-    //                     Some(index) => {
-    //                         let found_topic = &mut self.topics.write().unwrap()[index];
-    //                         for cg in topic.read().unwrap().consumer_groups.iter() {
-    //                             let all_cgs = &found_topic.read().unwrap().consumer_groups;
-    //                             let found_cg = all_cgs.iter()
-    //                                 .find(|self_cg| self_cg.name == cg.name);
-    //                             match found_cg {
-    //                                 None => {
-    //                                     found_topic.write().unwrap().consumer_groups.push(cg.clone());
-    //                                 }
-    //                                 Some(consumer_group) => {
-    //                                     if consumer_group.name == consumer_group_in_use {
-    //                                         continue;
-    //                                     }
-    //                                     let mut self_current_offset =
-    //                                         consumer_group.offset.load(Ordering::SeqCst);
-    //                                     let saved_current_offset = cg.offset.load(Ordering::SeqCst);
-    //                                     info!("Consumer Group updating {} current: {:?} new: {:?}", consumer_group.name, self_current_offset, saved_current_offset);
-    //                                     loop {
-    //                                         let res = consumer_group.offset.compare_exchange(
-    //                                             self_current_offset,
-    //                                             saved_current_offset,
-    //                                             Ordering::SeqCst,
-    //                                             Ordering::SeqCst,
-    //                                         );
-    //                                         match res {
-    //                                             Ok(_placeholder) => {
-    //                                                 break;
-    //                                             }
-    //                                             Err(value) => {
-    //                                                 warn!("Unable to update consumer group offset {:?}", res);
-    //                                                 self_current_offset = value;
-    //                                             }
-    //                                         }
-    //                                     }
-    //                                 }
-    //                             }
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         }
-    //         Err(err) => {
-    //             panic!("{}", err)
-    //         }
-    //     }
-    //     self.flush()
-    // }
 
     fn flush(&self) {
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");

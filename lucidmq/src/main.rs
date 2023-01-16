@@ -3,36 +3,14 @@ mod server;
 mod broker;
 mod message;
 mod consumer;
-use std::sync::Arc;
+mod types;
 use env_logger::Builder;
 use log::LevelFilter;
 use log::{info};
-
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::{Sender, Receiver};
-
-pub type SenderType = Sender<Command>;
-pub type RecieverType = Receiver<Command>;
+use types::{SenderType, RecieverType};
 
 
-#[derive(Debug)]
-pub enum Command{ 
-    Produce {
-        key: String,
-    },
-    Consume {
-        key: String,
-    },
-    Topic {
-        key: String
-    },
-    Response  {
-        key: String
-    },
-    Invalid {
-        key: String
-    }
-}
 
 #[tokio::main]
 pub async fn main() {
