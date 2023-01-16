@@ -1,21 +1,19 @@
 use core::panic;
 use log::{error, info, warn};
 use std::fs;
-use std::sync::atomic::AtomicUsize;
 
-//use std::sync::{Arc, Mutex};
 use crate::cleaner::Cleaner;
 use crate::nolan_errors::SegmentError;
 use crate::segment::Segment;
+use crate::virtual_segment::VirtualSegment;
 use std::collections::HashMap;
 
-#[derive(Default)]
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
     cleaner: Cleaner,
     max_segment_size: u64,
-    current_segment_index: AtomicUsize,
+    current_segment: VirtualSegment
 }
 
 impl Commitlog {
@@ -35,7 +33,7 @@ impl Commitlog {
             segments: vec,
             cleaner: new_cleaner,
             max_segment_size: max_segment_size_bytes,
-            ..Default::default()
+            current_segment: VirtualSegment::new(&base_directory, max_segment_size_bytes, 0) // This is just a placeholder
         };
         //TODO: error handle this
         fs::create_dir_all(base_directory).expect("Unable to create directory");
@@ -43,29 +41,12 @@ impl Commitlog {
         clog
     }
 
-    /**
-     * Given a byte array, attempt to add to our commitlog on the latest segment
-     */
     pub fn append(&mut self, data: &[u8]) -> u16 {
-        let total_segment = self.segments.len();
-        if total_segment == 0 {
-            let segment = Segment::new(self.directory.clone(), self.max_segment_size, 0);
-            self.segments.push(segment);
-            self.current_segment_index = AtomicUsize::new(0);
-        }
-        let index = self.current_segment_index.get_mut();
-
-        // Properly error handle this
-        let current_segment = self
-            .segments
-            .get_mut(*index)
-            .expect("Unable to get current segment");
-
-        match current_segment.write(data) {
+        match self.current_segment.write(data) {
             Ok(segment_offset_written) => {
                 info!("Successfully wrote to segment");
                 let commitlog_written_offset =
-                    current_segment.starting_offset + segment_offset_written;
+                    self.current_segment.starting_offset + segment_offset_written;
                 self.clean();
                 return commitlog_written_offset;
             }
@@ -81,7 +62,6 @@ impl Commitlog {
                 } else {
                     panic!("{}", err)
                 }
-                
             }
         }
     }
@@ -135,7 +115,8 @@ impl Commitlog {
                 .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
             latest_segment_index -= 1;
             if latest_segment_index > 0 {
-                self.current_segment_index = AtomicUsize::new(latest_segment_index);
+                let current_segment_from_loaded_segments = self.segments.get(latest_segment_index).expect("Unable to set current segment from loaded segments");
+                self.current_segment = VirtualSegment::load_segment(&self.directory, current_segment_from_loaded_segments.starting_offset, self.max_segment_size).expect("unable to load virtual segment");
             }
         }
 
@@ -144,28 +125,28 @@ impl Commitlog {
         }
     }
 
-    /**
-     * Update the most current segment with information.
-     */
-    fn reload_current_segment(&mut self) {
-        //What do we want to do when reload is called??
-        if self.segments.is_empty() {
-            return;
-        }
-        let index = self.current_segment_index.get_mut();
-        // Properly error handle this
-        let current_segment = self
-            .segments
-            .get_mut(*index)
-            .expect("Unable to get current segment");
-        current_segment.reload().expect("Unable to reload segment");
-    }
+    // /**
+    //  * Update the most current segment with information.
+    //  */
+    // fn reload_current_segment(&mut self) {
+    //     //What do we want to do when reload is called??
+    //     if self.segments.is_empty() {
+    //         return;
+    //     }
+    //     let index = self.current_segment_index.get_mut();
+    //     // Properly error handle this
+    //     let current_segment = self
+    //         .segments
+    //         .get_mut(*index)
+    //         .expect("Unable to get current segment");
+    //     current_segment.reload().expect("Unable to reload segment");
+    // }
 
     /**
      * Load segments in from the commitlog directory that have not been loaded into memory yet.
      */
     pub fn reload_segments(&mut self) {
-        self.reload_current_segment();
+        //self.reload_current_segment();
         let mut segment_map: HashMap<String, String> = HashMap::new();
         let mut valid_segments_found: Vec<String> = Vec::new();
         if let Ok(entries) = fs::read_dir(&self.directory) {
@@ -226,15 +207,15 @@ impl Commitlog {
             self.segments.push(loaded_segment);
         }
 
-        let mut latest_segment_index = self.segments.len();
-        if latest_segment_index != 0 {
-            self.segments
-                .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
-            latest_segment_index -= 1;
-            if latest_segment_index > 0 {
-                self.current_segment_index = AtomicUsize::new(latest_segment_index);
-            }
-        }
+        // let mut latest_segment_index = self.segments.len();
+        // if latest_segment_index != 0 {
+        //     self.segments
+        //         .sort_by(|a, b| a.starting_offset.cmp(&b.starting_offset));
+        //     latest_segment_index -= 1;
+        //     if latest_segment_index > 0 {
+        //         self.current_segment_index = AtomicUsize::new(latest_segment_index);
+        //     }
+        // }
     }
 
     /**
@@ -242,21 +223,16 @@ impl Commitlog {
      */
     fn split(&mut self) {
         info!("Spliting commitlog segment");
-        // Get the current segment
-        let index = self.current_segment_index.get_mut();
-        let current_segment = self
-            .segments
-            .get_mut(*index)
-            .expect("Unable to get current segment");
+        //Flush the current virtual segment to disk
+        self.current_segment.flush();
 
         // Get the next offset from current segment and create a new segment with it
-        let next_offset = current_segment.next_offset;
-        let segment = Segment::new(self.directory.clone(), self.max_segment_size, next_offset);
+        let next_offset = self.current_segment.next_offset;
 
-        // Update our object with our new segment and details.
-        self.segments.push(segment);
-        let latest_segment_index = self.segments.len() - 1;
-        self.current_segment_index = AtomicUsize::new(latest_segment_index);
+        self.current_segment = VirtualSegment::new(&self.directory, self.max_segment_size, next_offset);
+
+        // Since our last current segment got flushed to disk, reload from disk to update the segments
+        self.reload_segments()
     }
 
     /**
@@ -264,6 +240,23 @@ impl Commitlog {
      * segment that it is located in.
      */
     pub fn read(&mut self, offset: usize) -> Result<Vec<u8>, String> {
+        //First check the current segment
+        if usize::from(self.current_segment.starting_offset) <= offset {
+            let search_offset = offset - usize::from(self.current_segment.starting_offset);
+            return match self.current_segment.read_at(search_offset) {
+                Ok(buffer) => Ok(buffer),
+                Err(err) => {
+                    let out_of_bounds = SegmentError::new("offset is out of bounds");
+                    if err == out_of_bounds {
+                        return Err("Offset does not exist in the commitlog".to_string());
+                    } else {
+                        panic!("unexpected error reached")
+                    }
+                }
+            }
+        }
+
+        // Check the segments on disk
         let mut segment_index: Option<usize> = None;
         for (i, segment) in self.segments.iter().enumerate() {
             if usize::from(segment.starting_offset) <= offset {
@@ -285,7 +278,7 @@ impl Commitlog {
                 Err(err) => {
                     let out_of_bounds = SegmentError::new("offset is out of bounds");
                     if err == out_of_bounds {
-                        Err("Offset does not exist in the commitlog".to_string())
+                        return Err("Offset does not exist in the commitlog".to_string());
                     } else {
                         panic!("unexpected error reached")
                     }
@@ -307,14 +300,14 @@ impl Commitlog {
             Ok(_res) => info!("Cleaned commitlog successfully."),
             Err(_error) => error!("Error occured when cleaning file."),
         };
-        let latest_segment_index = self.segments.len() - 1;
-        self.current_segment_index = AtomicUsize::new(latest_segment_index);
+        // let latest_segment_index = self.segments.len() - 1;
+        // self.current_segment_index = AtomicUsize::new(latest_segment_index);
     }
 
     /**
      * Returns the first offset of the first segment.
      */
-    pub fn get_oldest_offset(&mut self) -> usize {
+    pub fn get_oldest_offset(&self) -> usize {
         // If there is no segments intialized, just return 0
         if self.segments.len() == 0 {
             return 0;
@@ -327,10 +320,8 @@ impl Commitlog {
     /**
      * Returns the first offset of the first segment.
      */
-    pub fn get_latest_offset(&mut self) -> usize {
-        let index = self.current_segment_index.get_mut();
-        let latest_segment = &self.segments[*index];
-        let offset = latest_segment.next_offset;
+    pub fn get_latest_offset(&self) -> usize {
+        let offset: u16 = self.current_segment.next_offset;
         usize::from(offset)
     }
 }
@@ -385,5 +376,43 @@ mod commitlog_tests {
             let retrived_message = cl.read(i).expect("Unable to retrieve message");
             assert_eq!(test_data, &*retrived_message);
         }
+    }
+
+    #[test]
+    fn get_oldest_offset_test() {
+        let number_of_iterations = 5;
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000);
+        
+        
+        for i in 0..number_of_iterations {
+            let string_message = format!("myTestMessage{}", i);
+            let test_data = string_message.as_bytes();
+            cl.append(test_data);
+        }
+
+        let latest_cl_offset = cl.get_oldest_offset();
+        assert_eq!(0, latest_cl_offset);
+    }
+
+    #[test]
+    fn get_latest_offset_test() {
+        let number_of_iterations = 5;
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000);
+        
+        
+        for i in 0..number_of_iterations {
+            let string_message = format!("myTestMessage{}", i);
+            let test_data = string_message.as_bytes();
+            cl.append(test_data);
+        }
+
+        let latest_cl_offset = cl.get_latest_offset();
+        assert_eq!(number_of_iterations, latest_cl_offset);
     }
 }
