@@ -84,10 +84,9 @@ for message in messages:
 The repo is made up of a base library written in Rust and other client libraries for easily interacting with the logs using other languages.
 
     ├── nolan            # The base library containing code for the commitlog
-    ├── lucidmq-cli      # CLI library for running LucidMQ as an executable
-    ├── lucidmq          # Rust Client Library
-    ├── pylucidmq        # Python Client Library
-    └── node-lucidmq     # Node Client Library
+    ├── lucidmq          # Lucidmq broker and server
+    ├── lucidmq-cli      # CLI client for interacting with lucidmq
+    └── protocol         # Protocol for the server messaging
 
 ---
 
@@ -109,27 +108,6 @@ Persisting state to a distributed system. There are many benefits to this approa
 
 ---
 
-## What's Next?
-
-- [ ] Implement tests
-
-- [ ] Publish node.js/npm library
-
-- [ ] Update CLI tool to have more functionality
-
-- [ ] Update documentation
-
-### LucidMQ design
-
-```txt
---> Base Directory where the topics and commitlogs live.
---> Topics which is a mapping to the commitlog directory
---> Consumer Groups
---> Persisting this information on disk in the case of a crash or if other processes need to interact.
-```
-
----
-
 ## License
 
-Apache-2.0 license
+MIT
