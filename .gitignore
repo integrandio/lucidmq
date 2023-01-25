@@ -2,4 +2,5 @@
 /test_log
 .DS_Store
 
-#**/*_capnp.rs
+# Generated cap n proto does not need to bee checked in
+**/*_capnp.rs
