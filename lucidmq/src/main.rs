@@ -4,6 +4,10 @@ mod broker;
 mod message;
 mod consumer;
 mod types;
+mod test;
+pub mod cnp_capnp;
+pub mod topic_capnp;
+
 use env_logger::Builder;
 use log::LevelFilter;
 use log::{info};

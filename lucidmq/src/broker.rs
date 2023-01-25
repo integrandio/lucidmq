@@ -1,5 +1,5 @@
 use std::{sync::{Arc, RwLock}};
-use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, types::Command, types::SenderType};
+use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, types::Command, types::SenderType, test};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -141,12 +141,12 @@ impl Broker {
     fn handle_producer(&mut self, topic_name: &str) -> String{
         info!("Handling producer message");
         let found_index = self.check_topics(topic_name);
-        let mut message = Message::new("key".as_bytes(), "value".as_bytes(), None);
-        
+        let data = test::create_prooducer_message();
+
         match found_index {
             Some(x) => {
                 let found_topic = &self.topics.read().expect("unable to get read lock")[x];
-                found_topic.write().expect("unable to write to topic").commitlog.append(&message.serialize_message());
+                found_topic.write().expect("unable to write to topic").commitlog.append(&data);
             },
             None => {
                 warn!("topic does not exist");
@@ -155,7 +155,7 @@ impl Broker {
         return "consumed".to_string();
     }
     
-    fn new_topic(&mut self, topic_name: &str) -> String{
+    fn new_topic(&mut self, topic_name: &str) -> String {
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(_) => {

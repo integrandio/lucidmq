@@ -3,6 +3,6 @@
 members = [
     "nolan",
     "lucidmq",
-    #"lucidmq-cli"
+    "lucidmq-cli",
     "protocol"
 ]
