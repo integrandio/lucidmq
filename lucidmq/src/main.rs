@@ -1,10 +1,11 @@
 mod topic;
-mod server;
+//mod server;
 mod broker;
 mod message;
 mod consumer;
 mod types;
 mod test;
+mod new_server;
 pub mod cnp_capnp;
 pub mod topic_capnp;
 
@@ -27,14 +28,20 @@ pub async fn main() {
     let response_channel_reciever: RecieverType;
     (response_channel_sender, response_channel_reciever) = mpsc::channel(32);
 
-    let server = server::LucidServer::new(
-        request_channel_sender,
-        response_channel_reciever
-    );
+    // let server = server::LucidServer::new(
+    //     request_channel_sender,
+    //     response_channel_reciever
+    // );
 
     let broker = broker::Broker::new("test_log".to_string(), 100, 100);
     tokio::spawn(async move {
         broker.run(request_channel_reciever, response_channel_sender).await;
     });
-    let _res = server.start().await;
+    let lqServer = new_server::LucidQuicServer::new(
+        request_channel_sender,
+        response_channel_reciever
+    );
+
+    lqServer.run_server().await;
+    //let _res = server.start().await;
 }

@@ -12,6 +12,7 @@ build = "src/generate_schema.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+tokio = { version = "1.0", features = ["full"]}
 quinn = "*"
 rustls = { version = "*", features = ["dangerous_configuration", "quic"] }
 clap = { version = "3.0", features = ["derive"] }

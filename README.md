@@ -6,78 +6,7 @@
 
 ## What is LucidMQ
 
-LucidMQ is a Rust-language library that implements a small, fast, self-contained, high-reliability, full-featured, streaming engine. Unlike most other streaming services, LucidMQ does not have a separate server process. LucidMQ reads and writes directly to ordinary disk files. Think of LucidMQ not as a replacement for Kafka or RabbitMQ but as a replacement for `fopen()` or trying to stream data via SQLite.
-
----
-
-## How to use LucidMQ
-
-There are 2 client libraries avaliable for LucidMQ. There is a native Rust library and a Python library.
-
-### Rust
-
-Look in the lucidmq directory for installation instructions and demo code in Rust readme. **[LucidMQ](https://github.com/bdkiran/lucidmq/tree/master/lucidmq)**.
-
-
-```Rust
-use lucidmq::{LucidMQ, Message};
-
-// Create our lucidmq instance
-let mut lucidmq = LucidMQ::new("base_directory".to_string());
-
-// Let's produce message to our message queue
-let mut producer = lucidmq.new_producer("topic1".to_string());
-// Create a message that you want to send.
-// Every message has a key, value and timestamp.
-let key = format!("key{}", 1);
-let value = format!("value{}", 1);
-let mut message = Message::new(key.as_bytes(), value.as_bytes(), None); 
-producer.produce(&message.serialize_message());
-
-// Let's create a consumer to consumer our messages
-let mut consumer = lucidmq.new_consumer("topic1".to_string());
-// Get all the messages for that polling period
-let records = consumer.poll(1000);
-// Print out all of the messages recieved.
-for record in records {
-    println!("{}", str::from_utf8(&record.key).unwrap());
-    println!("{}", str::from_utf8(&record.value).unwrap());
-    println!("{}", record.timestamp);
-}
-```
-
-### Python
-
-Look in the pylucidmq directory for installation instructions and more demo code in Python readme. **[LucidMQ](https://github.com/bdkiran/lucidmq/tree/master/pylucidmq)**.
-
-```python
-import pylucidmq
-
-# Create our lucidmq instance, choosing where to store the data
-# and size configurations
-lucidmq = pylucidmq.LucidMQ("./test_log", 1000, 500)
-
-#Let's produce message to our desired topic
-producer = lucidmq.new_producer("topic1")
-
-#Create a message that you want to send.
-#Every message has a key, value and timestamp.
-key = "key{0}".format(x).encode()
-value = "value{0}".format(x).encode()
-producer.produce_message(pylucidmq.Message(key, value))
-
-# Let's create a consumer for our desired topic and consumer group to
-# retrieve our messages
-consumer = lucidmq.new_consumer("topic1", "group1")
-#Get all the messages for that polling period
-messages = consumer.poll(1000)
-#Print out all of the messages recieved.
-for message in messages:
-    key = bytes(message.key)
-    value = bytes(message.value)
-    print(key.decode("utf-8"))
-    print(value.decode("utf-8"))
-```
+LucidMQ is a streaming platform that focuses on providing low configuration and operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. Spend less time worring about operating your streaming platform cluster and spend more time building your real time applications.
 
 ### Repo Structure
 
@@ -91,6 +20,14 @@ The repo is made up of a base library written in Rust and other client libraries
 ---
 
 ## Why do you need LucidMQ?
+
+### Need for Speed
+
+LucidMQ is built on top of the QUIC Protocol which allows for connections to be open up very quickly.
+
+### Advanced Protocol
+
+The LucidMQ protocol stands on the shoulder of giants and takes advantage of Cap n' Protos zero copy encoding format to enable blazing fast comunications.
 
 ### Embedded devices and the internet of things
 

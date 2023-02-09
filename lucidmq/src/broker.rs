@@ -71,28 +71,28 @@ impl Broker {
             let thing: Command;
             info!("message came through {:?}", command);
             match command {
-                Command::Produce { conn_addr: addr, key: _, data } => {
+                Command::Produce { conn_id: addr, key: _, data } => {
                     let thing0 = self.handle_producer("topic1");
                     thing = Command::Response {
                         key: thing0,
-                        conn_addr: addr,
+                        conn_id: addr,
                         data
                     }
                 },
-                Command::Consume { conn_addr: addr, key: _, data  } => {
+                Command::Consume { conn_id: addr, key: _, data  } => {
                     let thing0 = self.handle_consumer("topic1");
                     thing = Command::Response { 
                         key: thing0,
-                        conn_addr: addr,
+                        conn_id: addr,
                         data
                     }
                 }
-                Command::Topic { conn_addr: addr, key: _, topic_name   } => {
+                Command::Topic { conn_id: addr, key: _, topic_name   } => {
                     let data = Vec::new();
                     let thing0 = self.new_topic(&topic_name);
                     thing = Command::Response { 
                         key: thing0,
-                        conn_addr: addr,
+                        conn_id: addr,
                         data
                     }
                 }
@@ -135,7 +135,7 @@ impl Broker {
                 warn!("topic does not exist");
             }
         } 
-        return "produced".to_string();
+        return "consumed".to_string();
     }
 
     fn handle_producer(&mut self, topic_name: &str) -> String{

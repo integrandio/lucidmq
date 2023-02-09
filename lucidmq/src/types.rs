@@ -4,22 +4,22 @@ use tokio::sync::mpsc::{Sender, Receiver};
 #[derive(Debug)]
 pub enum Command{ 
     Produce {
-        conn_addr: String,
+        conn_id: String,
         key: String,
         data: Vec<u8>
     },
     Consume {
-        conn_addr: String,
+        conn_id: String,
         key: String,
         data: Vec<u8>
     },
     Topic {
-        conn_addr: String,
+        conn_id: String,
         key: String,
         topic_name: String,
     },
     Response  {
-        conn_addr: String,
+        conn_id: String,
         key: String,
         data: Vec<u8>
     },

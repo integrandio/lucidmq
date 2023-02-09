@@ -1,6 +1,7 @@
+mod client;
 use clap::{arg, Command};
-use env_logger::Builder;
-use log::LevelFilter;
+//use env_logger::Builder;
+//use log::LevelFilter;
 
 // fn create_topic(topic: String) {
 //     let base_dir = String::from("../test_log");
@@ -85,34 +86,38 @@ fn cli() -> Command<'static> {
         )
 }
 
-fn main() {
-    Builder::new().filter_level(LevelFilter::max()).init();
-    let matches = cli().get_matches();
+#[tokio::main]
+async fn main() {
+    let addr = "127.0.0.1:5000".parse().unwrap();
+    let res = client::run_client(addr).await;
+    res.expect("NO ERRORS PLEASSE")
+    // Builder::new().filter_level(LevelFilter::max()).init();
+    // let matches = cli().get_matches();
 
-    match matches.subcommand() {
-        Some(("topic", sub_matches)) => {
-            let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-            println!("Creating topic {}", topic_name);
-            //create_topic(topic_name.to_string());
-        }
-        Some(("produce", sub_matches)) => {
-            let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-            println!("producing to {}", topic_name);
-            //run_producer(topic_name.to_string());
-        }
-        Some(("consume", sub_matches)) => {
-            let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-            let consumer_group_name = sub_matches
-                .get_one::<String>("CONSUMER_GROUP")
-                .expect("required");
-            println!(
-                "Consuming from {}  with {}",
-                topic_name, consumer_group_name
-            );
-            //run_consumer(topic_name.to_string(), consumer_group_name.to_string());
-        }
-        _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
-    }
+    // match matches.subcommand() {
+    //     Some(("topic", sub_matches)) => {
+    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
+    //         println!("Creating topic {}", topic_name);
+    //         //create_topic(topic_name.to_string());
+    //     }
+    //     Some(("produce", sub_matches)) => {
+    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
+    //         println!("producing to {}", topic_name);
+    //         //run_producer(topic_name.to_string());
+    //     }
+    //     Some(("consume", sub_matches)) => {
+    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
+    //         let consumer_group_name = sub_matches
+    //             .get_one::<String>("CONSUMER_GROUP")
+    //             .expect("required");
+    //         println!(
+    //             "Consuming from {}  with {}",
+    //             topic_name, consumer_group_name
+    //         );
+    //         //run_consumer(topic_name.to_string(), consumer_group_name.to_string());
+    //     }
+    //     _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
+    // }
 
     // Continued program logic goes here...
 }

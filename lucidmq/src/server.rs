@@ -74,17 +74,6 @@ impl LucidServer {
         Ok(())
     }
 
-    // async fn accept_connection(&self, stream: TcpStream, addr: SocketAddr) {
-    //     let ws_stream = accept_async(stream).await.expect("Failed to accept");
-    //     let (outgoing, incoming) = ws_stream.split();
-
-    //     if let Err(e) = self.handle_connection(incoming).await {
-    //         match e {
-    //             Error::ConnectionClosed | Error::Protocol(_) | Error::Utf8 => (),
-    //             err => error!("Error processing connection: {}", err),
-    //         }
-    //     }
-    // }
 }
 
 async fn handle_connection(
@@ -106,21 +95,20 @@ async fn handle_connection(
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
-        let peer_add;
+        let id;
         let response_message: Message;
         match command {
-            Command::Response { conn_addr, key: thing , data: _} => {
+            Command::Response { conn_id, key: thing , data: _} => {
                 info!("{}", thing);
                 response_message = Message::Text("hi".to_string());
-                peer_add =
-                    std::net::SocketAddr::from_str(&conn_addr).expect("unable to get nework thing");
+                id = conn_id;
             }
             _ => {
                 panic!("Command not good")
             }
         }
         let mut wing = peermap.lock().await;
-        let outgoing = wing.get_mut(&peer_add).expect("Key not found");
+        let outgoing = wing.get_mut(&id).expect("Key not found");
         let res = outgoing.send(response_message).await;
         match res {
             Err(e) => {
@@ -135,17 +123,17 @@ pub fn parse_mesage(websocket_message: &str, addr: String) -> Command {
     info!("{:?}", websocket_message);
     match websocket_message {
         "produce\n" => Command::Produce {
-            conn_addr: addr,
+            conn_id: addr,
             key: "produce".to_string(),
             data: "data".as_bytes().to_vec()
         },
         "consume\n" => Command::Consume {
-            conn_addr: addr,
+            conn_id: addr,
             key: "consume".to_string(),
             data: "data".as_bytes().to_vec()
         },
         "topic\n" => Command::Topic {
-            conn_addr: addr,
+            conn_id: addr,
             key: "topic".to_string(),
             topic_name: "topic1".to_string()
         },
