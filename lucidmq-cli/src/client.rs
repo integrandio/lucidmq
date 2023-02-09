@@ -63,7 +63,7 @@ async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<String>) {
 
 async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<String>) {
     loop {
-        let message = rx.blocking_recv().expect("Unable to recieve message from channel");
+        let message = rx.recv().await.expect("Unable to recieve message");
         let request_bytes = &message.as_bytes();
         send.write_all(request_bytes).await.expect("unable to write request bytes");
         send.finish().await.expect("unable to finish connection");
