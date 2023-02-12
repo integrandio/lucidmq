@@ -1,4 +1,12 @@
 # LucidMQ
+<p align="center">
+    <b>Simple Ops Event Streaming</b>
+</p>
+
+<p align=center>
+    <a href="https://github.com/lucidmq/lucidmq/actions/workflows/lucidmq.yml"><img src="https://github.com/lucidmq/lucidmq/workflows/Tests/badge.svg" alt="Tests status"></a>
+    <a href="https://github.com/lucidmq/lucidmq/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-success" alt="MIT License"></a>
+</p>
 
 > :warning: **This project is in Alpha Stage**: Expect breaking changes
 

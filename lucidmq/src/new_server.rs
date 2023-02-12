@@ -45,29 +45,31 @@ impl LucidQuicServer {
                 "[server] connection accepted: addr={}",
                 conn.remote_address()
             );
+            let cloned_sender = self.sender.clone();
             let arc_peer_map = Arc::new(self.peer_map.clone());
             tokio::spawn(async move {
-                handle_connection(conn, arc_peer_map).await;
+                handle_connection(conn, arc_peer_map, cloned_sender).await;
             });
         }
     }
 }
 
 
-async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>) {
+async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>, sender: SenderType) {
     let connection = conn.await.expect("Unble to get connection");
     loop {
-        let (send_stream, recv_stream): (quinn::SendStream, quinn::RecvStream)= connection.accept_bi().await.expect("Unable to create a bidirection connection");
+        info!("Creating bidirectional stream");
+        let (send_stream, recv_stream): (quinn::SendStream, quinn::RecvStream) = connection.accept_bi().await.expect("Unable to create a bidirection connection");
         let id = generate_connection_string();
         peermap.lock().await.insert(id.clone(), send_stream);
-        tokio::spawn(async move {
-            handle_request(id, recv_stream).await;
-        });
+        let thing = handle_request(id, recv_stream).await;
+        sender.send(thing).await;
     }
 }
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
+        info!("Recieved message");
         let id;
         let response_message: Vec<u8>;
         match command {
@@ -87,14 +89,14 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     }
 }
 
-async fn handle_request(conn_id: String, recv_stream: quinn::RecvStream) {
+async fn handle_request(conn_id: String, recv_stream: quinn::RecvStream) -> Command {
     let req = recv_stream
         .read_to_end(64 * 1024)
         .await.expect("Failed reading request {}");
     let s = String::from_utf8_lossy(&req);
     let msg = parse_mesage(&s, conn_id);
     info!("{:?}", req);
-    info!("complete");
+    return msg;
 }
 
 fn generate_connection_string() -> String {

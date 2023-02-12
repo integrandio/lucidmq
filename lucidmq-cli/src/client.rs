@@ -21,15 +21,14 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 
     tokio::spawn(read_stdin(stdin_tx));
     
-    let (mut send, mut recv) = connection.open_bi().await.expect("Unable to open bidirection stream");
+    let (send, mut recv) = connection.open_bi().await.expect("Unable to open bidirection stream");
 
     tokio::spawn(write_to_stream(send, stdin_rx));
     
     let mut buf = vec![0u8; 5];
     let response_buffer = &mut buf;
     loop {
-        recv.read(response_buffer).await.expect("unable to read message");
-
+       let bytes_read = recv.read(response_buffer).await.expect("unable to read message");
         println!("{}", std::str::from_utf8(response_buffer).expect("unable to convert"));
     }
 
