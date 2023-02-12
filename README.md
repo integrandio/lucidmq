@@ -1,7 +1,7 @@
 <div align="center">
 <p align="center">
-
-![LucidMQ](https://user-images.githubusercontent.com/25624274/218326888-190d0376-5357-4b9d-9852-3ed59ef0133e.png)
+    
+![LucidMQ](https://user-images.githubusercontent.com/25624274/218341069-514ac1ec-0a06-4260-a229-c047dd531ac2.png)
 
 **Simple Ops Event Streaming. Alternative to Kafka and Rabbitmq. Build your real time applications without the headache of ops overhead.**
 
