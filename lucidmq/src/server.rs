@@ -1,185 +1,169 @@
-use std::{collections::HashMap, io::Error as IoError, net::SocketAddr, str::FromStr, sync::Arc};
-
-use futures::{
-    stream::{SplitSink, SplitStream},
-    SinkExt,
-};
-use futures_util::StreamExt;
-use log::{info, warn, error};
-
+use log::{info, error};
+use quinn::{Endpoint, ServerConfig, SendStream};
 use tokio::sync::Mutex;
+use std::process::exit;
+use std::{error::Error, net::SocketAddr, sync::Arc, collections::HashMap};
 
-use tokio::net::{TcpListener, TcpStream};
-use tokio_tungstenite::tungstenite::protocol::Message;
-use tokio_tungstenite::tungstenite::Result;
-use tokio_tungstenite::{accept_async, WebSocketStream};
+use rand::{thread_rng, Rng};
+use rand::distributions::Alphanumeric;
 
-use crate::{types::Command, RecieverType, SenderType};
+use crate::{types::{SenderType, RecieverType, Command, Payload}};
 
-type Tx = SplitSink<WebSocketStream<TcpStream>, Message>;
-type PeerMap = Arc<Mutex<HashMap<SocketAddr, Tx>>>;
+type PeerMap = Arc<Mutex<HashMap<String, SendStream>>>;
 
-// Struct that implements the websocket server
-pub struct LucidServer {
-    // A map containing all of the current connections to the server
+pub struct LucidQuicServer {
     peer_map: PeerMap,
-    // Address where the server is serving from
-    address: String,
-    // The channel to send updates to the broker
+    address: SocketAddr,
     sender: SenderType,
-    // The channel to recieve updates from the broker
-    reciever: RecieverType,
+    reciever: RecieverType
 }
 
-impl LucidServer {
-    // Creates a new instance of a LucidServer
-    pub fn new(sender: SenderType, reciever: RecieverType) -> LucidServer {
-        let addr = "127.0.0.1:8080".to_string();
-        LucidServer {
+impl LucidQuicServer {
+    pub fn new(sender: SenderType, reciever: RecieverType) -> LucidQuicServer {
+        let addr = "127.0.0.1:5000".parse().unwrap();
+        LucidQuicServer { 
             peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,
             sender: sender,
-            reciever: reciever,
+            reciever: reciever
         }
     }
 
-    // Start the lucid server by listening for connections and responding to updates from the broker
-    pub async fn start(self) -> Result<(), IoError> {
-        // Create the event loop and TCP listener we'll accept connections on.
-        let try_socket = TcpListener::bind(&self.address).await;
-        let listener = try_socket.expect("Failed to bind");
-        info!("Listening on: {}", self.address);
-
-        let thing = Arc::new(self.peer_map.clone());
-
-        tokio::spawn(async move { handle_responses(self.reciever, thing).await });
-
-        // Let's spawn the handling of each connection in a separate task.
-        while let Ok((stream, addr)) = listener.accept().await {
+    /// Runs a QUIC server bound to given address.
+    pub async fn run_server(self) {
+        info!("Server Listening on {}", self.address.to_string());
+        let (endpoint, _server_cert) = make_server_endpoint(self.address).unwrap();
+        
+        let arc_peer_map = Arc::new(self.peer_map.clone());
+        tokio::spawn(async move {
+            handle_responses(self.reciever, arc_peer_map).await;
+        });
+        
+        // accept a single connection
+        while let Some(conn) = endpoint.accept().await {
+            info!(
+                "[server] connection accepted: addr={}",
+                conn.remote_address()
+            );
             let cloned_sender = self.sender.clone();
-            let ws_stream = accept_async(stream).await.expect("Failed to accept");
-            let (outgoing, incoming) = ws_stream.split();
-            self.peer_map.lock().await.insert(addr, outgoing);
-
+            let arc_peer_map = Arc::new(self.peer_map.clone());
             tokio::spawn(async move {
-                let res = handle_connection(incoming, cloned_sender, addr.to_string()).await;
-                match res {
-                    Err(e) => {
-                        error!("{}", e)
-                    }
-                    Ok(_) => {},
-                }
+                handle_connection(conn, arc_peer_map, cloned_sender).await;
             });
         }
-        Ok(())
     }
-
 }
 
-async fn handle_connection(
-    mut incoming: SplitStream<WebSocketStream<TcpStream>>,
-    sender: SenderType,
-    addr: String
-) -> Result<()> {
-    while let Some(msg) = incoming.next().await {
-        let msg = msg?;
-        if msg.is_binary() {
-            let command = parse_mesage(msg.to_text().unwrap(), addr.clone());
-            sender.send(command).await.unwrap();
-        } else {
-            warn!("message is not binary: {:?}", msg)
-        }
+
+async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>, sender: SenderType) {
+    let connection = conn.await.expect("Unble to get connection");
+    loop {
+        info!("Creating bidirectional stream");
+        let (send_stream, recv_stream): (quinn::SendStream, quinn::RecvStream) = connection.accept_bi().await.expect("Unable to create a bidirection connection");
+        let id = generate_connection_string();
+        peermap.lock().await.insert(id.clone(), send_stream);
+        let thing = handle_request(id, recv_stream).await;
+        sender.send(thing).await.expect("Unable to send message");
     }
-    Ok(())
 }
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
+        info!("Recieved message");
         let id;
-        let response_message: Message;
+        let response_message: Vec<u8>;
         match command {
-            Command::Response { conn_id, key: thing , data: _} => {
-                info!("{}", thing);
-                response_message = Message::Text("hi".to_string());
-                id = conn_id;
+            Command::Response (payload) => {
+                info!("{}", payload.message);
+                response_message = payload.data;
+                id = payload.conn_id;
             }
             _ => {
-                panic!("Command not good")
+                error!("Command not good");
+                exit(0)
             }
         }
         let mut wing = peermap.lock().await;
         let outgoing = wing.get_mut(&id).expect("Key not found");
-        let res = outgoing.send(response_message).await;
-        match res {
-            Err(e) => {
-                error!("{}", e)
-            }
-            Ok(_) => {},
-        }
+        outgoing.write_all(&response_message).await.expect("Unable to write response to buffer");
+        outgoing.finish().await.expect("unable to finish stream");
     }
 }
 
-pub fn parse_mesage(websocket_message: &str, addr: String) -> Command {
+async fn handle_request(conn_id: String, recv_stream: quinn::RecvStream) -> Command {
+    let req = recv_stream
+        .read_to_end(64 * 1024)
+        .await.expect("Failed reading request {}");
+    let s = String::from_utf8_lossy(&req);
+    let msg = parse_mesage(&s, conn_id);
+    info!("{:?}", req);
+    return msg;
+}
+
+fn generate_connection_string() -> String {
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(10)
+        .map(char::from)
+        .collect();
+    return rand_string;
+}
+
+
+pub fn parse_mesage(websocket_message: &str, conn_id: String) -> Command {
     info!("{:?}", websocket_message);
     match websocket_message {
-        "produce\n" => Command::Produce {
-            conn_id: addr,
-            key: "produce".to_string(),
-            data: "data".as_bytes().to_vec()
+        "produce\n" => {
+            let payload = Payload {
+                conn_id: conn_id,
+                message: "produce".to_string(),
+                data: "data".as_bytes().to_vec()
+            };
+            Command::Produce(payload)
         },
-        "consume\n" => Command::Consume {
-            conn_id: addr,
-            key: "consume".to_string(),
-            data: "data".as_bytes().to_vec()
-        },
-        "topic\n" => Command::Topic {
-            conn_id: addr,
-            key: "topic".to_string(),
-            topic_name: "topic1".to_string()
+        "consume\n" => {
+            let payload = Payload {
+                conn_id: conn_id,
+                message: "consume".to_string(),
+                data: "data".as_bytes().to_vec()
+            };
+            Command::Consume(payload)
+        }
+        "topic\n" =>{
+            let payload = Payload {
+                conn_id: conn_id,
+                message: "consume".to_string(),
+                data: "data".as_bytes().to_vec()
+            };
+            Command::Topic(payload)
         },
         _ => {
             info!("Cant parse message.... {}", websocket_message);
             Command::Invalid {
-                key: "invalid".to_string(),
+                message: "invalid".to_string(),
             }
         }
     }
 }
-// async fn handle_connection(&self, raw_stream: TcpStream, addr: SocketAddr) {
-//     info!("Incoming TCP connection from: {}", addr);
 
-//     let ws_stream = tokio_tungstenite::accept_async(raw_stream)
-//         .await
-//         .expect("Error during the websocket handshake occurred");
-//     info!("WebSocket connection established: {}", addr);
+// Helper Server endpoints
+fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>), Box<dyn Error>> {
+    let (server_config, server_cert) = configure_server()?;
+    let endpoint = Endpoint::server(server_config, bind_addr)?;
+    Ok((endpoint, server_cert))
+}
 
-//     // Insert the write part of this peer to the peer map.
-//     let (tx, rx) = unbounded();
-//     self.peer_map.lock().unwrap().insert(addr, tx);
+fn configure_server() -> Result<(ServerConfig, Vec<u8>), Box<dyn Error>> {
+    let cert = rcgen::generate_simple_self_signed(vec!["localhost".into()]).unwrap();
+    let cert_der = cert.serialize_der().unwrap();
+    let priv_key = cert.serialize_private_key_der();
+    let priv_key = rustls::PrivateKey(priv_key);
+    let cert_chain = vec![rustls::Certificate(cert_der.clone())];
 
-//     let (outgoing, incoming) = ws_stream.split();
+    let mut server_config = ServerConfig::with_single_cert(cert_chain, priv_key)?;
+    Arc::get_mut(&mut server_config.transport)
+        .unwrap()
+        .max_concurrent_uni_streams(0_u8.into());
 
-//     let broadcast_incoming = incoming.try_for_each(|msg| {
-//         info!("Received a message from {}: {}", addr, msg.to_text().unwrap());
-
-//         let peers = self.peer_map.lock().unwrap();
-
-//         // We want to broadcast the message to everyone except ourselves.
-//         let broadcast_recipients =
-//             peers.iter().filter(|(peer_addr, _)| peer_addr != &&addr).map(|(_, ws_sink)| ws_sink);
-
-//         for recp in broadcast_recipients {
-//             recp.unbounded_send(msg.clone()).unwrap();
-//         }
-
-//         future::ok(())
-//     });
-
-//     let receive_from_others = rx.map(Ok).forward(outgoing);
-
-//     pin_mut!(broadcast_incoming, receive_from_others);
-//     future::select(broadcast_incoming, receive_from_others).await;
-
-//     info!("{} disconnected", &addr);
-//     self.peer_map.lock().unwrap().remove(&addr);
-// }
+    Ok((server_config, cert_der))
+}

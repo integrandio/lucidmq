@@ -3,6 +3,8 @@ use quinn::{ClientConfig, Endpoint, SendStream};
 use tokio::{io::AsyncReadExt, sync::mpsc::UnboundedSender};
 use std::{error::Error, net::SocketAddr, sync::Arc};
 
+use crate::request_builder;
+
 
 pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
     let client_cfg = configure_client();
@@ -29,7 +31,16 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
     let response_buffer = &mut buf;
     loop {
        let bytes_read = recv.read(response_buffer).await.expect("unable to read message");
-        println!("{}", std::str::from_utf8(response_buffer).expect("unable to convert"));
+       match bytes_read {
+           Some(_total) => {
+            println!("{}", std::str::from_utf8(response_buffer).expect("unable to convert"));
+           },
+           None => {
+            println!("No new bytes in stream");
+            break;
+           }
+       }
+        
     }
 
     connection.close(0u32.into(), b"done");

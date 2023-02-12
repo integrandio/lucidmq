@@ -1,5 +1,5 @@
 use std::{sync::{Arc, RwLock}};
-use crate::{topic::Topic, message::Message, consumer::Consumer, RecieverType, types::Command, types::SenderType, test};
+use crate::{topic::Topic, consumer::Consumer, RecieverType, types::{Command, Payload}, types::SenderType};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
@@ -68,40 +68,43 @@ impl Broker {
 
     pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) {
         while let Some(command) = reciever.recv().await {
-            let thing: Command;
             info!("message came through {:?}", command);
-            match command {
-                Command::Produce { conn_id: addr, key: _, data } => {
-                    let thing0 = self.handle_producer("topic1");
-                    thing = Command::Response {
-                        key: thing0,
-                        conn_id: addr,
-                        data
-                    }
+            let response_command = match command {
+                Command::Produce (payload) => {
+                    let data = "my_payload".as_bytes().to_vec();
+                    let produce_response = self.handle_producer("topic1", data);
+                    let response_payload = Payload {
+                        conn_id: payload.conn_id,
+                        message: produce_response,
+                        data: payload.data
+                    };
+                    Command::Response(response_payload)
                 },
-                Command::Consume { conn_id: addr, key: _, data  } => {
-                    let thing0 = self.handle_consumer("topic1");
-                    thing = Command::Response { 
-                        key: thing0,
-                        conn_id: addr,
-                        data
-                    }
+                Command::Consume (payload) => {
+                    let consume_response = self.handle_consumer("topic1");
+                    let response_payload = Payload {
+                        conn_id: payload.conn_id,
+                        message: consume_response,
+                        data: payload.data
+                    };
+                    Command::Response(response_payload)
                 }
-                Command::Topic { conn_id: addr, key: _, topic_name   } => {
+                Command::Topic (payload) => {
                     let data = Vec::new();
-                    let thing0 = self.new_topic(&topic_name);
-                    thing = Command::Response { 
-                        key: thing0,
-                        conn_id: addr,
-                        data
-                    }
+                    let topic_response = self.new_topic("topic1");
+                    let response_payload = Payload {
+                        conn_id: payload.conn_id,
+                        message: topic_response,
+                        data: data
+                    };
+                    Command::Response(response_payload)
                 }
                 _=> {
                     warn!("Unable to parse command");
-                    thing = Command::Invalid { key: "invalid".to_string() }
+                    Command::Invalid { message: "invalid".to_string() }
                 } 
-            }
-            let res = sender.send(thing).await;
+            };
+            let res = sender.send(response_command).await;
             match res {
                 Err(e) => {
                     error!("{}", e)
@@ -138,10 +141,9 @@ impl Broker {
         return "consumed".to_string();
     }
 
-    fn handle_producer(&mut self, topic_name: &str) -> String{
+    fn handle_producer(&mut self, topic_name: &str, data: Vec<u8>) -> String{
         info!("Handling producer message");
         let found_index = self.check_topics(topic_name);
-        let data = test::create_prooducer_message();
 
         match found_index {
             Some(x) => {

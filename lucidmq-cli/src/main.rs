@@ -1,5 +1,7 @@
 mod client;
 use clap::{arg, Command};
+mod request_builder;
+pub mod lucid_schema_capnp;
 //use env_logger::Builder;
 //use log::LevelFilter;
 
