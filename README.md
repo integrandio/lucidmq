@@ -1,12 +1,18 @@
-# LucidMQ
+<div align="center">
 <p align="center">
-    <b>Simple Ops Event Streaming</b>
-</p>
 
-<p align=center>
-    <a href="https://github.com/lucidmq/lucidmq/actions/workflows/lucidmq.yml"><img src="https://github.com/lucidmq/lucidmq/workflows/Tests/badge.svg" alt="Tests status"></a>
-    <a href="https://github.com/lucidmq/lucidmq/blob/master/LICENSE"><img src="https://img.shields.io/badge/License-MIT-success" alt="MIT License"></a>
+![LucidMQ](https://user-images.githubusercontent.com/25624274/218326888-190d0376-5357-4b9d-9852-3ed59ef0133e.png)
+
+**Simple Ops Event Streaming. Alternative to Kafka and Rabbitmq. Build your real time applications without the headache of ops overhead.**
+
+<a href="https://lucidmq.com/docs/">Documentation</a> •
+<a href="https://lucidmq.com">Blog</a> 
+    
+![CI](https://github.com/lucidmq/lucidmq/actions/workflows/lucidmq.yml/badge.svg)
+![MIT License](https://img.shields.io/badge/License-MIT-success)
+
 </p>
+</div>
 
 > :warning: **This project is in Alpha Stage**: Expect breaking changes
 
@@ -37,11 +43,6 @@ LucidMQ is built on top of the QUIC Protocol which allows for connections to be 
 
 The LucidMQ protocol stands on the shoulder of giants and takes advantage of Cap n' Protos zero copy encoding format to enable blazing fast comunications.
 
-### Embedded devices and the internet of things
-
-Because an LucidMQ database requires no administration, it works well in devices that must operate without expert human support. LucidMQ is a good fit for use in cellphones, set-top boxes, televisions, game consoles, cameras, watches, kitchen appliances, thermostats, automobiles, machine tools, airplanes, remote sensors, drones, medical devices, and robots: the "Internet of Things".
-
-Client/server database engines are designed to live inside a lovingly-attended datacenter at the core of the network. LucidMQ works there too, but LucidMQ also thrives at the edge of the network, fending for itself while providing fast and reliable data services to applications that would otherwise have dodgy connectivity.
 
 ### Quickly Prototyping or Learning Event Streaming
 
