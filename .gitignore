@@ -1,5 +1,5 @@
 /target
-/test_log
+**/test_log
 .DS_Store
 
 # Generated cap n proto does not need to bee checked in

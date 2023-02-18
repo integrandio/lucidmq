@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 use log::{debug, info, warn, error};
+use crate::response_builder::{new_topic_response, new_produce_response, new_consume_response};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -71,26 +72,27 @@ impl Broker {
             info!("message came through {:?}", command);
             let response_command = match command {
                 Command::Produce (payload) => {
-                    let data = "my_payload".as_bytes().to_vec();
-                    let produce_response = self.handle_producer("topic1", data);
+                    let data = new_produce_response();
+                    let produce_response = self.handle_producer("topic1", payload.data);
                     let response_payload = Payload {
                         conn_id: payload.conn_id,
                         message: produce_response,
-                        data: payload.data
+                        data: data
                     };
                     Command::Response(response_payload)
                 },
                 Command::Consume (payload) => {
+                    let data = new_consume_response();
                     let consume_response = self.handle_consumer("topic1");
                     let response_payload = Payload {
                         conn_id: payload.conn_id,
                         message: consume_response,
-                        data: payload.data
+                        data: data
                     };
                     Command::Response(response_payload)
                 }
                 Command::Topic (payload) => {
-                    let data = Vec::new();
+                    let data = new_topic_response();
                     let topic_response = self.new_topic("topic1");
                     let response_payload = Payload {
                         conn_id: payload.conn_id,

@@ -1,12 +1,10 @@
 use tokio::sync::mpsc::{Sender, Receiver};
 
-
 #[derive(Debug)]
 pub struct Payload {
     pub conn_id: String,
     pub message: String,
     pub data: Vec<u8>
-
 }
 
 #[derive(Debug)]

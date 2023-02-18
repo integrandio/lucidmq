@@ -1,5 +1,6 @@
 use capnp::message::Builder;
 use capnp::serialize;
+use log::info;
 
 use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response};
 
@@ -12,8 +13,10 @@ pub fn new_topic_response() -> Vec<u8> {
     topic_response.set_success(true);
     topic_response.set_create(());
 
-    let data = serialize::write_message_to_words(&request_message);
-    data
+    let serialized_message = serialize::write_message_to_words(&request_message);
+    let framed_message = create_message_frame(serialized_message);
+
+    return framed_message;
 }
 
 pub fn new_produce_response() -> Vec<u8> {
@@ -23,8 +26,11 @@ pub fn new_produce_response() -> Vec<u8> {
     produce_response.set_topic_name("topic1");
     produce_response.set_offset(0);
 
-    let data = serialize::write_message_to_words(&request_message);
-    data
+    let serialized_message = serialize::write_message_to_words(&request_message);
+    let framed_message = create_message_frame(serialized_message);
+
+    return framed_message;
+    
 }
 
 pub fn new_consume_response() -> Vec<u8> {
@@ -40,6 +46,30 @@ pub fn new_consume_response() -> Vec<u8> {
         message_thing.set_timestamp(1);
     }
 
-    let data = serialize::write_message_to_words(&request_message);
-    data
+    let serialized_message = serialize::write_message_to_words(&request_message);
+    let framed_message = create_message_frame(serialized_message);
+
+    return framed_message;
+}
+
+
+pub fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
+
+    info!("Og message size: {}", original_message.len());
+    info!("{:?}", original_message);
+
+
+    let size_u16= u16::try_from(original_message.len()).unwrap();
+    let thing = size_u16.to_le_bytes();
+    info!("Size of thing {}", thing.len());
+    info!("{:?}", thing);
+
+    // Append the size in bytes to the begining of the vector
+    original_message.splice(0..0, thing.iter().cloned());
+
+    info!("new message size: {}", original_message.len());
+    info!("{:?}", original_message);
+
+    return original_message;
+
 }

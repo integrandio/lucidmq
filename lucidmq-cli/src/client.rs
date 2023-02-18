@@ -27,19 +27,34 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 
     tokio::spawn(write_to_stream(send, stdin_rx));
     
-    let mut buf = vec![0u8; 5];
-    let response_buffer = &mut buf;
+    let mut buf = [0u8; 2];
+    //let begin_buffer = &mut buf;
     loop {
-       let bytes_read = recv.read(response_buffer).await.expect("unable to read message");
-       match bytes_read {
-           Some(_total) => {
-            println!("{}", std::str::from_utf8(response_buffer).expect("unable to convert"));
-           },
-           None => {
-            println!("No new bytes in stream");
-            break;
-           }
-       }
+        let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
+        let message_size: u16 = match bytes_read {
+            Some(total) => {
+                println!("First Bytes recieved {:?} size {}", buf, total);
+                let message_size = u16::from_le_bytes(buf);
+                message_size
+            },
+            None => {
+                println!("No new bytes in stream");
+                continue;
+            }
+        };
+        let mut message_vec = vec![0u8; message_size.into()];
+        let message_buff = &mut message_vec;
+
+        let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
+        match message_bytes_read {
+            Some(total) => {
+                println!("Second Bytes recieved {:?} size {}", message_buff, total);
+            },
+            None => {
+                println!("No new bytes in stream");
+                break
+            }
+        };
         
     }
 
