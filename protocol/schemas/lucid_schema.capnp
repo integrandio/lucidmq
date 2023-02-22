@@ -1,5 +1,17 @@
 @0xa0042efeeed7bb94;
 
+# --- Message Envelope ----
+struct MessageEnvelope {
+  union {
+    topicRequest @0 :TopicRequest;
+    topicResponse @1 :TopicResponse;
+    produceRequest @2 :ProduceRequest;
+    produceResponse @3 :ProduceResponse;
+    consumeRequest @4 :ConsumeRequest;
+    consumeResponse @5 :ConsumeResponse;
+  }
+}
+
 # ----- Topic Messages --------
 
 struct TopicRequest {
@@ -16,9 +28,9 @@ struct TopicResponse {
   success @1 :Bool;
   union {
     describe :group {
-        maxSegmentBytes @2 :UInt64;
-        maxRetentionBytes @3 :UInt64;
-        consumerGroups @4 :List(Text);
+      maxSegmentBytes @2 :UInt64;
+      maxRetentionBytes @3 :UInt64;
+      consumerGroups @4 :List(Text);
     }
     create @5 :Void;
     delete @6 :Void;
@@ -31,8 +43,9 @@ struct ProduceRequest {
 }
 
 struct ProduceResponse {
-  topicName @0 :Text;
-  offset @1 :UInt64;
+  success @0 :Bool;
+  topicName @1 :Text;
+  offset @2 :UInt64;
 }
 
 struct ConsumeRequest {
@@ -43,7 +56,8 @@ struct ConsumeRequest {
 
 struct ConsumeResponse {
   success @0 :Bool;
-  messages @1 :List(Message);
+  topicName @1 :Text;
+  messages @2 :List(Message);
 }
 
 struct Message {

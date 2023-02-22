@@ -1,8 +1,8 @@
-use log::info;
 use quinn::{ClientConfig, Endpoint, SendStream};
-use tokio::{io::AsyncReadExt, sync::mpsc::UnboundedSender};
+use tokio::{io::AsyncReadExt};
 use std::{error::Error, net::SocketAddr, sync::Arc};
 
+use crate::response_parser;
 use crate::request_builder;
 
 
@@ -27,8 +27,8 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 
     tokio::spawn(write_to_stream(send, stdin_rx));
     
+    // This buffer is used to get the size of the actual message
     let mut buf = [0u8; 2];
-    //let begin_buffer = &mut buf;
     loop {
         let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
         let message_size: u16 = match bytes_read {
@@ -39,7 +39,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
             },
             None => {
                 println!("No new bytes in stream");
-                continue;
+                break;
             }
         };
         let mut message_vec = vec![0u8; message_size.into()];
@@ -55,7 +55,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
                 break
             }
         };
-        
+        response_parser::read_message_from_bytes(message_buff.to_vec())
     }
 
     connection.close(0u32.into(), b"done");
@@ -70,7 +70,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
 
 // Our helper method which will read data from stdin and send it along the
 // sender provided.
-async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<String>) {
+async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<Vec<u8>>) {
     let mut stdin = tokio::io::stdin();
     loop {
         let mut buf = vec![0; 1024];
@@ -82,18 +82,37 @@ async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<String>) {
         buf.truncate(n);
 
         let s = String::from_utf8_lossy(&buf);
-        tx.send(s.to_string()).expect("Unable to send message");
+        let request= parse_mesage(&s.to_string());
+        tx.send(request).expect("Unable to send message");
     }
 }
 
-async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<String>) {
+async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
     loop {
         let message = rx.recv().await.expect("Unable to recieve message");
-        let request_bytes = &message.as_bytes();
-        send.write_all(request_bytes).await.expect("unable to write request bytes");
+        send.write_all(&message).await.expect("unable to write request bytes");
         send.finish().await.expect("unable to finish connection");
     }
 }
+
+
+pub fn parse_mesage(websocket_message: &str) -> Vec<u8> {
+    match websocket_message {
+        "produce\n" => {
+            request_builder::new_produce_request()
+        },
+        "consume\n" => {
+            request_builder::new_consume_message()
+        }
+        "topic\n" =>{
+            request_builder::new_topic_request()
+        },
+        _ => {
+            panic!("response not recognized")
+        }
+    }
+}
+
 
 /// Dummy certificate verifier that treats any certificate as valid.
 /// NOTE, such verification is vulnerable to MITM attacks, but convenient for testing.

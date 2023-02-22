@@ -1,4 +1,5 @@
 /target
+# These dirs are what generally stores out test data, don't check in.
 **/test_log
 .DS_Store
 

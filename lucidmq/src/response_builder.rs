@@ -1,8 +1,8 @@
-use capnp::message::Builder;
+use capnp::message::{Builder, ReaderOptions};
 use capnp::serialize;
 use log::info;
 
-use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response};
+use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request};
 
 
 pub fn new_topic_response() -> Vec<u8> {
@@ -52,12 +52,9 @@ pub fn new_consume_response() -> Vec<u8> {
     return framed_message;
 }
 
-
-pub fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
-
+fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
     info!("Og message size: {}", original_message.len());
     info!("{:?}", original_message);
-
 
     let size_u16= u16::try_from(original_message.len()).unwrap();
     let thing = size_u16.to_le_bytes();
@@ -71,5 +68,19 @@ pub fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
     info!("{:?}", original_message);
 
     return original_message;
+}
 
+pub fn parse_cap_message(data: Vec<u8>) {
+    // Deserializing object
+   let reader = serialize::read_message(
+        data.as_slice(),
+        ReaderOptions::new()
+        ).unwrap();
+
+    let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
+    if message_envelope.has_topic_request() {
+        let topic_request = reader.get_root::<topic_request::Reader>().unwrap();
+        let topic_name = topic_request.get_topic_name().unwrap();
+        info!("{}", topic_name)
+    }
 }

@@ -83,10 +83,6 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
                 exit(0)
             }
         }
-        info!("###############################");
-        info!("Message size {}", response_message.len());
-        info!("Message {:?}", response_message);
-
         let mut wing = peermap.lock().await;
         let outgoing = wing.get_mut(&id).expect("Key not found");
         outgoing.write_all(&response_message).await.expect("Unable to write response to buffer");
@@ -112,7 +108,6 @@ fn generate_connection_string() -> String {
         .collect();
     return rand_string;
 }
-
 
 pub fn parse_mesage(websocket_message: &str, conn_id: String) -> Command {
     info!("{:?}", websocket_message);
