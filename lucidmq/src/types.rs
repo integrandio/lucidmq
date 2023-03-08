@@ -1,20 +1,38 @@
+use std::fmt;
+
+use capnp::message::{TypedReader, Builder, HeapAllocator};
 use tokio::sync::mpsc::{Sender, Receiver};
+use crate::lucid_schema_capnp::{produce_request, topic_request, consume_request};
 
-#[derive(Debug)]
-pub struct Payload {
-    pub conn_id: String,
-    pub message: String,
-    pub data: Vec<u8>
-}
 
-#[derive(Debug)]
-pub enum Command{ 
-    Produce (Payload),
-    Consume (Payload),
-    Topic (Payload),
-    Response  (Payload),
+pub enum Command{
+    TopicRequest {
+        conn_id: String,
+        capmessage: TypedReader::<Builder<HeapAllocator>, topic_request::Owned>
+
+    },
+    ProduceRequest {
+        conn_id: String,
+        capmessage: TypedReader::<Builder<HeapAllocator>, produce_request::Owned>
+
+    },
+    ConsumeRequest {
+        conn_id: String,
+        capmessage: TypedReader::<Builder<HeapAllocator>, consume_request::Owned>
+
+    },
+    Response {
+        conn_id: String,
+        capmessagedata: Vec<u8>
+    },
     Invalid {
         message: String
+    }
+}
+
+impl fmt::Debug for Command {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Command").finish()
     }
 }
 

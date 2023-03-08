@@ -1,9 +1,9 @@
 mod topic;
 mod broker;
-mod message;
+mod producer;
 mod consumer;
 mod types;
-mod response_builder;
+mod cap_n_proto_helper;
 mod server;
 pub mod lucid_schema_capnp;
 

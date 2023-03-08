@@ -7,7 +7,10 @@ use std::{error::Error, net::SocketAddr, sync::Arc, collections::HashMap};
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
-use crate::{types::{SenderType, RecieverType, Command, Payload}};
+use crate::cap_n_proto_helper::parse_request;
+
+use crate::types::Command;
+use crate::{types::{SenderType, RecieverType }};
 
 type PeerMap = Arc<Mutex<HashMap<String, SendStream>>>;
 
@@ -73,10 +76,10 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
         let id;
         let response_message: Vec<u8>;
         match command {
-            Command::Response (payload) => {
-                info!("{}", payload.message);
-                response_message = payload.data;
-                id = payload.conn_id;
+            Command::Response { conn_id, capmessagedata } => {
+                response_message = capmessagedata;
+                id = conn_id;
+
             }
             _ => {
                 error!("Command not good");
@@ -94,9 +97,7 @@ async fn handle_request(conn_id: String, recv_stream: quinn::RecvStream) -> Comm
     let req = recv_stream
         .read_to_end(64 * 1024)
         .await.expect("Failed reading request {}");
-    let s = String::from_utf8_lossy(&req);
-    let msg = parse_mesage(&s, conn_id);
-    info!("{:?}", req);
+    let msg = parse_request(conn_id, req.clone());
     return msg;
 }
 
@@ -109,41 +110,41 @@ fn generate_connection_string() -> String {
     return rand_string;
 }
 
-pub fn parse_mesage(websocket_message: &str, conn_id: String) -> Command {
-    info!("{:?}", websocket_message);
-    match websocket_message {
-        "produce\n" => {
-            let payload = Payload {
-                conn_id: conn_id,
-                message: "produce".to_string(),
-                data: "data".as_bytes().to_vec()
-            };
-            Command::Produce(payload)
-        },
-        "consume\n" => {
-            let payload = Payload {
-                conn_id: conn_id,
-                message: "consume".to_string(),
-                data: "data".as_bytes().to_vec()
-            };
-            Command::Consume(payload)
-        }
-        "topic\n" =>{
-            let payload = Payload {
-                conn_id: conn_id,
-                message: "consume".to_string(),
-                data: "data".as_bytes().to_vec()
-            };
-            Command::Topic(payload)
-        },
-        _ => {
-            info!("Cant parse message.... {}", websocket_message);
-            Command::Invalid {
-                message: "invalid".to_string(),
-            }
-        }
-    }
-}
+// pub fn parse_mesage(websocket_message: &str, conn_id: String) -> Command {
+//     info!("{:?}", websocket_message);
+//     match websocket_message {
+//         "produce" => {
+//             let payload = Payload {
+//                 conn_id: conn_id,
+//                 message: "produce".to_string(),
+//                 data: "data".as_bytes().to_vec()
+//             };
+//             Command::Produce(payload)
+//         },
+//         "consume" => {
+//             let payload = Payload {
+//                 conn_id: conn_id,
+//                 message: "consume".to_string(),
+//                 data: "data".as_bytes().to_vec()
+//             };
+//             Command::Consume(payload)
+//         }
+//         "topic" =>{
+//             let payload = Payload {
+//                 conn_id: conn_id,
+//                 message: "consume".to_string(),
+//                 data: "data".as_bytes().to_vec()
+//             };
+//             Command::Topic(payload)
+//         },
+//         _ => {
+//             info!("Cant parse message.... {}", websocket_message);
+//             Command::Invalid {
+//                 message: "invalid".to_string(),
+//             }
+//         }
+//     }
+// }
 
 // Helper Server endpoints
 fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>), Box<dyn Error>> {

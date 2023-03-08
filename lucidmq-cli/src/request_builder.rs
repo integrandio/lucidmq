@@ -1,7 +1,7 @@
 use capnp::message::Builder;
 use capnp::serialize;
 
-use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope, message};
+use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 
 
 pub fn new_topic_request() -> Vec<u8> {

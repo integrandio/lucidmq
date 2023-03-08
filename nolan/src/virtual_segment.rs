@@ -21,9 +21,7 @@ const LOG_SUFFIX: &str = ".log";
 const INDEX_SUFFIX: &str = ".index";
 
 impl VirtualSegment {
-    /**
-     * Create a virtual segment with the provided starting offset
-     */
+    /// Create a virtual segment with the provided starting offset
     pub fn new(base_directory: &str, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
         info!("Creating a new virtual segment");
         let log_file_path =
@@ -42,10 +40,7 @@ impl VirtualSegment {
         }
     }
 
-    /**
-     * Given a directory and the base name of the log and index file, load a new
-     * segment into memory.
-     */
+    /// Given a directory and the base name of the log and index file, load a new segment into memory.
     pub fn load_segment(
         base_directory: &str,
         segment_offset: u16,

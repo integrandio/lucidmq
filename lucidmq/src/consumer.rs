@@ -1,5 +1,4 @@
 use crate::topic::{Topic, ConsumerGroup};
-use crate::message::Message;
 use log::info;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
@@ -35,14 +34,14 @@ impl Consumer {
      * Reads from the commitlog for a set amount of time and returns a vector is messages when complete. 
      * The offset where the starting read takes place is based off of the consumer group offset
      */
-    pub fn poll(&mut self, timeout: u64) -> Vec<Message> {
+    pub fn poll(&mut self, timeout: u64) -> Vec<Vec<u8>> {
         //Let's check if there are any new segments added.
         self.topic.write().expect("Unable to get lock on consumer topic").commitlog.reload_segments();
         info!("polling for messages");
 
         let timeout_duration = Duration::from_millis(timeout);
         let ten_millis = Duration::from_millis(100);
-        let mut records: Vec<Message> = Vec::new();
+        let mut records: Vec<Vec<u8>> = Vec::new();
         let start_time = Instant::now();
 
         let mut elapsed_duration = start_time.elapsed();
@@ -52,9 +51,7 @@ impl Consumer {
             let mut topic = self.topic.write().expect("Unable to get lock on consumer topic");
             match topic.commitlog.read(n) {
                 Ok(buffer) => {
-                    let message = Message::deserialize_message(&buffer);
-                    records.push(message);
-                    //self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
+                    records.push(buffer);
                     self.update_consumer_group_offset();
                 }
                 Err(err) => {
@@ -78,16 +75,15 @@ impl Consumer {
      * Given a starting offset and a max_records to return, fetch will read all of the offsets and return the records until there is no more records
      * or the max records limit has been hit.
      */
-    pub fn _fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Message> {
+    pub fn _fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Vec<u8>> {
         let commitlog = &mut self.topic.write().expect("Unable to get topic from lock").commitlog;
         commitlog.reload_segments();
         let mut offset = starting_offset;
-        let mut records: Vec<Message> = Vec::new();
+        let mut records: Vec<Vec<u8>> = Vec::new();
         while records.len() < max_records {
             match commitlog.read(offset) {
                 Ok(buffer) => {
-                    let message = Message::deserialize_message(&buffer);
-                    records.push(message);
+                    records.push(buffer);
                     offset += 1;
                 }
                 Err(err) => {

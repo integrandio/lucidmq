@@ -1,3 +1,6 @@
+//! Nolan is a crate that specifies a implemeation for a commitlog storage structure.
+//! 
+
 use core::panic;
 use log::{error, info, warn};
 use std::fs;
@@ -8,6 +11,8 @@ use crate::segment::Segment;
 use crate::virtual_segment::VirtualSegment;
 use std::collections::HashMap;
 
+/// Commitlog is a struct that represents the logs stored on memory and on disc.
+/// A commitlog is a directory that is made up of segments that stored within that directory.
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
@@ -17,10 +22,8 @@ pub struct Commitlog {
 }
 
 impl Commitlog {
-    /**
-     * new creates a new commitlog taking in a base directory(where the segments live),
-     * a max segment size in bytes and a the max bytes the whole commitlog that the cleaner will retain.
-     */
+    /// new creates a new commitlog taking in a base directory(where the segments live),
+    /// a max segment size in bytes and a the max bytes the whole commitlog that the cleaner will retain.
     pub fn new(
         base_directory: String,
         max_segment_size_bytes: u64,
@@ -66,10 +69,8 @@ impl Commitlog {
         }
     }
 
-    /**
-     * Look through the directory of the commitlog and load the segments into memory.
-     * Also performs some cleanup on non-matching logs and indexes
-     */
+    /// Look through the directory of the commitlog and load the segments into memory.
+    /// Also performs some cleanup on non-matching logs and indexes
     fn load_segments(&mut self) {
         //let mut files_to_clean: HashMap<String, String> = HashMap::new();
         //let paths = fs::read_dir(&self.directory).expect("Unable to read files in directory.");
@@ -142,9 +143,8 @@ impl Commitlog {
     //     current_segment.reload().expect("Unable to reload segment");
     // }
 
-    /**
-     * Load segments in from the commitlog directory that have not been loaded into memory yet.
-     */
+    
+    /// Load segments in from the commitlog directory that have not been loaded into memory yet.
     pub fn reload_segments(&mut self) {
         //self.reload_current_segment();
         let mut segment_map: HashMap<String, String> = HashMap::new();

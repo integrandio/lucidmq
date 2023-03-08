@@ -1,11 +1,11 @@
 use std::{sync::{Arc, RwLock}};
-use crate::{topic::Topic, consumer::Consumer, RecieverType, types::{Command, Payload}, types::SenderType};
+use crate::{topic::Topic, consumer::Consumer, RecieverType, types::{Command}, types::SenderType, producer::Producer};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 use log::{debug, info, warn, error};
-use crate::response_builder::{new_topic_response, new_produce_response, new_consume_response};
+use crate::cap_n_proto_helper::{new_topic_response, new_produce_response, new_consume_response};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -71,36 +71,28 @@ impl Broker {
         while let Some(command) = reciever.recv().await {
             info!("message came through {:?}", command);
             let response_command = match command {
-                Command::Produce (payload) => {
-                    let data = new_produce_response();
-                    let produce_response = self.handle_producer("topic1", payload.data);
-                    let response_payload = Payload {
-                        conn_id: payload.conn_id,
-                        message: produce_response,
-                        data: data
-                    };
-                    Command::Response(response_payload)
-                },
-                Command::Consume (payload) => {
-                    let data = new_consume_response();
-                    let consume_response = self.handle_consumer("topic1");
-                    let response_payload = Payload {
-                        conn_id: payload.conn_id,
-                        message: consume_response,
-                        data: data
-                    };
-                    Command::Response(response_payload)
-                }
-                Command::Topic (payload) => {
+                Command::TopicRequest { conn_id, capmessage } => {
+                    let cp_request = capmessage.get().unwrap();
                     let data = new_topic_response();
-                    let topic_response = self.new_topic("topic1");
-                    let response_payload = Payload {
-                        conn_id: payload.conn_id,
-                        message: topic_response,
-                        data: data
-                    };
-                    Command::Response(response_payload)
+                    let _topic_response = self.new_topic(cp_request.get_topic_name().unwrap());
+                    Command::Response { conn_id: conn_id, capmessagedata: data}
                 }
+                Command::ProduceRequest { conn_id, capmessage } => {
+                    let cp_request = capmessage.get().unwrap();
+                    let data = new_produce_response();
+                    let _produce_response = self.handle_producer(cp_request.get_topic_name().unwrap(), "abcdefg".as_bytes().to_vec());
+                    Command::Response { conn_id: conn_id, capmessagedata: data}
+                },
+                Command::ConsumeRequest { conn_id, capmessage } => {
+                    let cp_request = capmessage.get().unwrap();
+                    
+                    let data = new_consume_response();
+                    let _consume_response = self.handle_consumer(
+                        cp_request.get_topic_name().unwrap(),
+                         cp_request.get_consumer_group().unwrap()
+                    );
+                    Command::Response { conn_id: conn_id, capmessagedata: data}
+                },
                 _=> {
                     warn!("Unable to parse command");
                     Command::Invalid { message: "invalid".to_string() }
@@ -116,14 +108,14 @@ impl Broker {
         }
     }
 
-    fn handle_consumer(&mut self, topic_name: &str) -> String{
+    fn handle_consumer(&mut self, topic_name: &str, consumer_group: &str) -> String{
         info!("Handling consumer message");
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(x) => {
                 let broker = self.clone();
                 let found_topic = &self.topics.read().expect("unable to get read lock")[x];
-                let consumer_group = found_topic.write().expect("unable to get writer").load_consumer_group("cg1");
+                let consumer_group = found_topic.write().expect("unable to get writer").load_consumer_group(consumer_group);
                 let mut consumer= Consumer::new(found_topic.clone(),
                      consumer_group,
                      Box::new(move || broker.flush()));
@@ -131,9 +123,7 @@ impl Broker {
                 info!("{}", messages.len());
                 for message in messages {
                     info!("------------------------------------------");
-                    info!("{}", std::str::from_utf8(&message.key).unwrap());
-                    info!("{}", std::str::from_utf8(&message.value).unwrap());
-                    info!("{:?}", &message.timestamp);
+                    info!("{:?}", message);
                 }
             },
             None => {
@@ -150,13 +140,14 @@ impl Broker {
         match found_index {
             Some(x) => {
                 let found_topic = &self.topics.read().expect("unable to get read lock")[x];
-                found_topic.write().expect("unable to write to topic").commitlog.append(&data);
+                let mut producer = Producer::new(found_topic.clone());
+                producer.produce_bytes(&data);
             },
             None => {
                 warn!("topic does not exist");
             }
         }
-        return "consumed".to_string();
+        return "produced".to_string();
     }
     
     fn new_topic(&mut self, topic_name: &str) -> String {
@@ -168,7 +159,6 @@ impl Broker {
             None => {
                 let topic = Topic::new(topic_name.to_string(), self.base_directory.clone());
                 fs::create_dir_all(&topic.directory).expect("Unable to create directory");
-                //let td = topic.directory.clone();
                 {
                     self.topics.write().expect("unable to get write lock").push(Arc::new(RwLock::new(topic)));
                 }
@@ -200,8 +190,10 @@ impl Broker {
     fn flush(&self) {
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
         info!("Saving lucidmq state to file {}", lucidmq_file_path.to_string_lossy());
+        // TODO: error handle this
         let encoded_data: Vec<u8> =
             bincode::serialize(&self).expect("Unable to encode lucidmq metadata");
+        // TODO: error handle this
         let mut file = OpenOptions::new()
             .create(true)
             .read(true)
@@ -209,7 +201,7 @@ impl Broker {
             .append(false)
             .open(lucidmq_file_path)
             .expect("Unable to create and open file");
-
+        // TODO: error handle this
         file.write_all(&encoded_data)
             .expect("Unable to write to file");
     }

@@ -1,27 +1,32 @@
-use std::{sync::{Arc, Mutex}};
-use crate::{message::Message, lucid::Topic};
+use crate::topic::{Topic};
+use std::{sync::{Arc, RwLock}};
 
 pub struct Producer {
-    topic: Arc<Mutex<Topic>>
+    topic: Arc<RwLock<Topic>>
 }
 
 impl Producer {
-    pub fn new( producer_topic: Arc<Mutex<Topic>>) -> Producer {
+    pub fn new( producer_topic: Arc<RwLock<Topic>>) -> Producer {
         Producer {
             topic: producer_topic
         }
     }
 
-    pub fn produce_message(&mut self, mut message: Message) -> u16 {
-        let message_bytes = message.serialize_message();
-        self.topic.lock().unwrap().commitlog.append(&message_bytes)
-    }
-
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> u16 {
-        self.topic.lock().unwrap().commitlog.append(&bytes)
+        self.topic.write().unwrap().commitlog.append(&bytes)
+        //self.topic.lock().unwrap().commitlog.append(&bytes)
     }
 
-    pub fn get_topic(&self) -> String {
-        self.topic.lock().unwrap().name.clone()
+    pub fn _produce_bytes_vector(&mut self, bytes_vector: Vec<&[u8]>) -> u16 {
+        let mut last_offset = 0;
+        let commitlog = &mut self.topic.write().unwrap().commitlog;
+        for bytes in bytes_vector {
+            last_offset = commitlog.append(&bytes)
+        }
+        last_offset
+    }
+
+    pub fn _get_topic(&self) -> String {
+        self.topic.read().unwrap().name.clone()
     }
 }
