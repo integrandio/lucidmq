@@ -11,10 +11,9 @@ impl Producer {
             topic: producer_topic
         }
     }
-
+    
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> u16 {
         self.topic.write().unwrap().commitlog.append(&bytes)
-        //self.topic.lock().unwrap().commitlog.append(&bytes)
     }
 
     pub fn _produce_bytes_vector(&mut self, bytes_vector: Vec<&[u8]>) -> u16 {

@@ -38,8 +38,9 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
                 message_size
             },
             None => {
-                println!("No new bytes in stream");
-                break;
+                continue;
+                //println!("No new bytes in stream");
+                //break;
             }
         };
         let mut message_vec = vec![0u8; message_size.into()];
@@ -51,8 +52,9 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
                 println!("Second Bytes recieved {:?} size {}", message_buff, total);
             },
             None => {
-                println!("No new bytes in stream");
-                break
+                continue;
+                //println!("No new bytes in stream");
+                //break
             }
         };
         response_parser::read_message_from_bytes(message_buff.to_vec())
@@ -90,8 +92,9 @@ async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<Vec<u8>>) {
 async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
     loop {
         let message = rx.recv().await.expect("Unable to recieve message");
-        send.write_all(&message).await.expect("unable to write request bytes");
-        send.finish().await.expect("unable to finish connection");
+        println!("{:?}", message);
+        send.write(&message).await.unwrap();//.expect("unable to write request bytes");
+        //send.finish().await.expect("unable to finish connection");
     }
 }
 

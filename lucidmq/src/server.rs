@@ -60,14 +60,36 @@ impl LucidQuicServer {
 
 async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>, sender: SenderType) {
     let connection = conn.await.expect("Unble to get connection");
-    loop {
-        info!("Creating bidirectional stream");
-        let (send_stream, recv_stream): (quinn::SendStream, quinn::RecvStream) = connection.accept_bi().await.expect("Unable to create a bidirection connection");
+
+    while let Ok((send_stream, recv_stream)) = connection.accept_bi().await {
         let id = generate_connection_string();
         peermap.lock().await.insert(id.clone(), send_stream);
-        let thing = handle_request(id, recv_stream).await;
-        sender.send(thing).await.expect("Unable to send message");
+        handle_request(id, recv_stream, &sender).await;
+        //sender.send(command).await.expect("Unable to send message");
     }
+
+    // async {
+    //     info!("running");
+    //     loop {
+    //         info!("running0");
+    //         let stream = connection.accept_bi().await;
+    //         let stream = match stream {
+    //             Err(quinn::ConnectionError::ApplicationClosed { .. }) => {
+    //                 info!("connection closed");
+    //                 return Ok(());
+    //             }
+    //             Err(e) => {
+    //                 return Err(e);
+    //             }
+    //             Ok(s) => s,
+    //         };
+
+    //         let id = generate_connection_string();
+    //         peermap.lock().await.insert(id.clone(), stream.0);
+    //         handle_request(id, stream.1).await;
+    //         //sender.send(command).await.expect("Unable to send message");
+    //     }
+    // }.await;
 }
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
@@ -88,17 +110,44 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
         }
         let mut wing = peermap.lock().await;
         let outgoing = wing.get_mut(&id).expect("Key not found");
-        outgoing.write_all(&response_message).await.expect("Unable to write response to buffer");
-        outgoing.finish().await.expect("unable to finish stream");
+        outgoing.write(&response_message).await.expect("Unable to write response to buffer");
+        //outgoing.finish().await.expect("unable to finish stream");
     }
 }
 
-async fn handle_request(conn_id: String, recv_stream: quinn::RecvStream) -> Command {
-    let req = recv_stream
-        .read_to_end(64 * 1024)
-        .await.expect("Failed reading request {}");
-    let msg = parse_request(conn_id, req.clone());
-    return msg;
+async fn handle_request(conn_id: String, mut recv: quinn::RecvStream, sender: &SenderType) {
+    let mut buf = [0u8; 2];
+    loop {
+        let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
+        let message_size: u16 = match bytes_read {
+            Some(total) => {
+                info!("First Bytes recieved {:?} size {}", buf, total);
+                let message_size = u16::from_le_bytes(buf);
+                message_size
+            },
+            None => {
+                panic!("No new bytes in stream");
+                //break;
+            }
+        };
+        let mut message_vec = vec![0u8; message_size.into()];
+        let message_buff = &mut message_vec;
+
+        let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
+        match message_bytes_read {
+            Some(total) => {
+                println!("Second Bytes recieved {:?} size {}", message_buff, total);
+            },
+            None => {
+                //continue;
+                panic!("No new bytes in stream");
+                //break
+            }
+        };
+        let msg = parse_request(conn_id.clone(), message_buff.clone());
+        sender.send(msg).await.expect("Unble to send message");
+    }
+    //return msg;
 }
 
 fn generate_connection_string() -> String {

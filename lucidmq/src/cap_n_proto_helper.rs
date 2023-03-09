@@ -60,11 +60,7 @@ fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
     return original_message;
 }
 
-pub fn parse_request(conn_id: String, mut data: Vec<u8>) -> Command {
-    info!("{:?}", data);
-    let buf = [0u8; 2];
-    data.drain(0..buf.len());
-    info!("{:?}", data);
+pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
     // Deserializing object
    let reader = serialize::read_message(
         data.as_slice(),
