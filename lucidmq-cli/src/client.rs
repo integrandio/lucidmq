@@ -2,7 +2,7 @@ use quinn::{ClientConfig, Endpoint, SendStream};
 use tokio::{io::AsyncReadExt};
 use std::{error::Error, net::SocketAddr, sync::Arc};
 
-use crate::response_parser;
+use crate::cap_n_proto_helper;
 use crate::request_builder;
 
 
@@ -39,8 +39,6 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
             },
             None => {
                 continue;
-                //println!("No new bytes in stream");
-                //break;
             }
         };
         let mut message_vec = vec![0u8; message_size.into()];
@@ -53,11 +51,9 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
             },
             None => {
                 continue;
-                //println!("No new bytes in stream");
-                //break
             }
         };
-        response_parser::read_message_from_bytes(message_buff.to_vec())
+        cap_n_proto_helper::parse_response(message_buff.to_vec());
     }
 
     connection.close(0u32.into(), b"done");

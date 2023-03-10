@@ -1,8 +1,10 @@
 mod client;
 use clap::{arg, Command};
+use env_logger::Builder;
+use log::LevelFilter;
 mod request_builder;
-mod response_parser;
 pub mod lucid_schema_capnp;
+mod cap_n_proto_helper;
 /*
 What commands do we want to expose to the cli?
 Create lucidmq?
@@ -43,10 +45,11 @@ fn cli() -> Command<'static> {
 
 #[tokio::main]
 async fn main() {
+    Builder::new().filter_level(LevelFilter::Info).init();
     let addr = "127.0.0.1:5000".parse().unwrap();
     let res = client::run_client(addr).await;
     res.expect("NO ERRORS PLEASSE")
-    // Builder::new().filter_level(LevelFilter::max()).init();
+    
     // let matches = cli().get_matches();
 
     // match matches.subcommand() {

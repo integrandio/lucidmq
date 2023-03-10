@@ -5,7 +5,7 @@ on:
     branches:
       - '*'
     paths:
-      - "lucidmq/**"
+      - "lucidmq-cli/**"
   workflow_dispatch:
     branches:
       - '*'
@@ -14,7 +14,7 @@ on:
 
 jobs:
   build_and_test:
-    name: LucidMQ - Build and Test
+    name: LucidMQ-CLI - Build and Test
     runs-on: ubuntu-latest
     container:
       image: registry.nocaply.com/lucidmq-base:latest

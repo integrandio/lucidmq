@@ -35,7 +35,7 @@ impl Index {
             .write(true)
             .append(true)
             .open(index_path.clone())
-            .expect(&message);
+            .expect(&message); // TODO: Error handle this
         let empty_entry_vec = Vec::new();
         Index {
             file_name: index_path,
@@ -158,6 +158,9 @@ impl Index {
         offset: usize,
     ) -> Result<(u64, usize), IndexError> {
         // This can throw an exception if the offset is greater than the size of the array, how do we check?
+        if offset > self.entries.len() {
+            return Err(IndexError::new("offset is greater than entries length"));
+        }
         let entry = self.entries[offset];
         let start_offset: u64 = entry.start.into();
         //TODO: error handle this correctly
@@ -172,53 +175,27 @@ impl Index {
 #[cfg(test)]
 mod index_tests {
     use std::path::Path;
-    use std::sync::Once;
-    use std::fs;
+    use tempdir::TempDir;
+    
     use rand::{distributions::Alphanumeric, Rng}; // 0.8
     use crate::index::Index;
 
-    static INIT: Once = Once::new();
-    static TEST_DIRECTORY: &'static str = "test";
-
-    /* This is used to run the cleanup code after the test runs.... */
-    struct Setup {
-        index_file: String
-    }
-
-    impl Default for Setup {
-        fn default() -> Self{
-            println!("Thing ups");
-            INIT.call_once(|| {
-                println!("Initializing Test Directory");
-                fs::create_dir_all(TEST_DIRECTORY).expect("Unable to create directory");
-            });
-            let s: String = rand::thread_rng()
-                .sample_iter(&Alphanumeric)
-                .take(7)
-                .map(char::from)
-                .collect();
-
-            let index_file_path = TEST_DIRECTORY.to_string() + "/" + &s + ".index";
-            
-            Self {  index_file: index_file_path}
-        }
-    }
-
-    impl Drop for Setup {
-        fn drop(&mut self) {
-            println!("Cleaning up");
-            //let index_file_path = TEST_DIRECTORY.to_string() + "/test.index";
-            fs::remove_file(self.index_file.clone()).expect("Unable to delete file on cleanups");
-        }
-    }
-
     #[test]
     fn test_new_index() {
-        let my_setup = Setup::default();
-        //let index_file_path = TEST_DIRECTORY.to_string() + "/test.index";
-        Index::new(my_setup.index_file.clone());    
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let s: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(7)
+            .map(char::from)
+            .collect();
+        let index_file_path = test_dir_path.to_string() + &s + ".index";
+        let index = Index::new(index_file_path);    
         //Check if the index file exists
-        assert!(Path::new(&my_setup.index_file).exists());
+        assert!(Path::new(&index.file_name).exists());
     }
 
 

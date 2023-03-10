@@ -126,7 +126,7 @@ impl Consumer {
             self.consumer_group
                 .offset
                 .store(new_consumer_group_offset, Ordering::SeqCst);
-            //self.save_info();
+            self.save_info();
         }
     }
 
@@ -136,7 +136,6 @@ impl Consumer {
     pub fn update_consumer_group_offset(&self) {
         self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
     }
-
     
     //save info calls a callback function which will sync and persist the state.
     fn save_info(&self) {

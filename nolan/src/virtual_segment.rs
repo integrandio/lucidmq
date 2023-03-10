@@ -104,7 +104,7 @@ impl VirtualSegment {
      * Return the offset in the segment that was written to.
      */
     pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
-        let computed_size_bytes = u64::try_from(self.contents.get_ref().len())
+        let computed_size_bytes = u64::try_from(self.contents.get_ref().len() + data.len()) 
             .expect("unable to convert from usize to u64");
         if computed_size_bytes > self.max_bytes {
             return Err(SegmentError::new(
@@ -196,13 +196,15 @@ impl VirtualSegment {
 
 #[cfg(test)]
 mod virtual_segment_tests {
-
+    use std::path::Path;
+    use tempdir::TempDir;
     use crate::virtual_segment::VirtualSegment;
+    use crate::nolan_errors::SegmentError;
 
     #[test]
     fn test_one_message() {
         let mut vs = VirtualSegment::new("test_dir", 100, 0);
-        let data = "heellos".as_bytes();
+        let data = "hellos".as_bytes();
         let offset = vs
             .write(data)
             .expect("unable to write data to virtual segment");
@@ -229,5 +231,35 @@ mod virtual_segment_tests {
                 .expect("Failed to get message from virtual segment");
             assert_eq!(message.as_bytes(), &*retrieve_data);
         }
+    }
+
+    #[test]
+    fn test_message_greater_than_segment() {
+        let mut vs = VirtualSegment::new("test_dir", 10, 0);
+        let data = "000000000000000".as_bytes();
+        let segment_error = vs
+            .write(data)
+            .unwrap_err();
+        let want = SegmentError::new("Write not possible. Segment log would be greater than max bytes");
+
+        assert_eq!(want, segment_error);
+
+    }
+
+    #[test]
+    fn test_flush() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let mut vs = VirtualSegment::new(test_dir_path, 100, 0);
+        let data = "hellos".as_bytes();
+        vs
+            .write(data)
+            .expect("unable to write data to virtual segment");
+        vs.flush();
+
+        assert!(Path::new(&vs.full_log_path).exists());
     }
 }

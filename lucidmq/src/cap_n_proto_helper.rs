@@ -7,6 +7,9 @@ use crate::lucid_schema_capnp::{topic_response, produce_response, consume_respon
 use crate::types::{Command};
 
 pub fn new_topic_response() -> Vec<u8> {
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
     let mut request_message = Builder::new_default();
     let mut topic_response = request_message.init_root::<topic_response::Builder>();
 
@@ -14,30 +17,42 @@ pub fn new_topic_response() -> Vec<u8> {
     topic_response.set_success(true);
     topic_response.set_create(());
 
-    let serialized_message = serialize::write_message_to_words(&request_message);
+    message_envelope.set_topic_response(topic_response.reborrow_as_reader()).expect("Unable to set message");
+
+    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
     let framed_message = create_message_frame(serialized_message);
 
     return framed_message;
 }
 
 pub fn new_produce_response() -> Vec<u8> {
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
     let mut request_message = Builder::new_default();
     let mut produce_response = request_message.init_root::<produce_response::Builder>();
 
     produce_response.set_topic_name("topic1");
     produce_response.set_offset(0);
+    produce_response.set_success(true);
 
-    let serialized_message = serialize::write_message_to_words(&request_message);
+    message_envelope.set_produce_response(produce_response.reborrow_as_reader()).expect("Unable to set message");
+
+    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
     let framed_message = create_message_frame(serialized_message);
 
     return framed_message;
 }
 
 pub fn new_consume_response() -> Vec<u8> {
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
     let mut request_message = Builder::new_default();
     let mut consume_reponse = request_message.init_root::<consume_response::Builder>();
 
     consume_reponse.set_success(true);
+    consume_reponse.set_topic_name("topic1");
     let mut messages = consume_reponse.init_messages(1);
     {
         let mut message_thing = messages.reborrow().get(0);
@@ -45,8 +60,9 @@ pub fn new_consume_response() -> Vec<u8> {
         message_thing.set_value("value".as_bytes());
         message_thing.set_timestamp(1);
     }
+    message_envelope.set_consume_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&request_message);
+    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
     let framed_message = create_message_frame(serialized_message);
 
     return framed_message;
