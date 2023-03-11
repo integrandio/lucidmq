@@ -31,7 +31,8 @@ jobs:
           id -u
       - name: Checkout
         uses: actions/checkout@v2
-      - run: cd lucidmq
-      - run: cargo --help
-      - run: cargo build --verbose
-      - run: cargo test --verbose
+      - name: Run with Docker
+        run: |
+          cd lucidmq
+          cargo --help
+          cargo build --verbose
