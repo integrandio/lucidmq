@@ -1,4 +1,4 @@
-name: lucidmq-ci
+name: lucidmq-cli-ci
 
 on:
   push:
