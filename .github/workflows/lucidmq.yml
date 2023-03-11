@@ -25,10 +25,7 @@ jobs:
     steps:
       - name: investigate
         run: |
-          pwd
-          whoami
-          ls -la
-          id -u
+          echo $PATH
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run with Docker
