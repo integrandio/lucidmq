@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: registry.nocaply.com/lucidmq-base:latest
-      options: --user root
+      options: "--user root --entrypoint /bin/bash"
       credentials:
         username: ${{  secrets.DOCKER_REGISTRY_USER }}
         password: ${{  secrets.DOCKER_REGISTRY_PASSWORD }}
