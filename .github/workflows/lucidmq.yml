@@ -23,8 +23,15 @@ jobs:
         username: ${{  secrets.DOCKER_REGISTRY_USER }}
         password: ${{  secrets.DOCKER_REGISTRY_PASSWORD }}
     steps:
+      - name: investigate
+        run: |
+          pwd
+          whoami
+          ls -la
+          id -u
       - name: Checkout
         uses: actions/checkout@v2
       - run: cd lucidmq
+      - run: cargo --help
       - run: cargo build --verbose
       - run: cargo test --verbose
