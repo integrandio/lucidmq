@@ -26,10 +26,10 @@ jobs:
       - name: investigate
         run: |
           echo $PATH
+          cargo --help
       - name: Checkout
         uses: actions/checkout@v2
       - name: Run with Docker
         run: |
           cd lucidmq
-          cargo --help
           cargo build --verbose
