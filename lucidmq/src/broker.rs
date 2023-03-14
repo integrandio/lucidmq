@@ -1,4 +1,6 @@
 use std::{sync::{Arc, RwLock}};
+use capnp::{message::{TypedReader, Builder, HeapAllocator}, serialize};
+use crate::lucid_schema_capnp::{produce_request, topic_request, consume_request};
 use crate::{topic::Topic, consumer::Consumer, RecieverType, types::{Command}, types::SenderType, producer::Producer};
 use std::fs::{self, OpenOptions};
 use serde::{Deserialize, Serialize};
@@ -72,25 +74,16 @@ impl Broker {
             info!("message came through {:?}", command);
             let response_command = match command {
                 Command::TopicRequest { conn_id, capmessage } => {
-                    let cp_request = capmessage.get().unwrap();
-                    let data = new_topic_response();
-                    let _topic_response = self.new_topic(cp_request.get_topic_name().unwrap());
+                    //let cp_request = capmessage.get().unwrap();
+                    let data = self.handle_topic(capmessage);
                     Command::Response { conn_id: conn_id, capmessagedata: data}
                 }
                 Command::ProduceRequest { conn_id, capmessage } => {
-                    let cp_request = capmessage.get().unwrap();
-                    let data = new_produce_response();
-                    let _produce_response = self.handle_producer(cp_request.get_topic_name().unwrap(), "abcdefg".as_bytes().to_vec());
+                    let data = self.handle_producer(capmessage);
                     Command::Response { conn_id: conn_id, capmessagedata: data}
                 },
                 Command::ConsumeRequest { conn_id, capmessage } => {
-                    let cp_request = capmessage.get().unwrap();
-                    
-                    let data = new_consume_response();
-                    let _consume_response = self.handle_consumer(
-                        cp_request.get_topic_name().unwrap(),
-                         cp_request.get_consumer_group().unwrap()
-                    );
+                    let data = self.handle_consumer(capmessage);
                     Command::Response { conn_id: conn_id, capmessagedata: data}
                 },
                 _=> {
@@ -108,8 +101,35 @@ impl Broker {
         }
     }
 
-    fn handle_consumer(&mut self, topic_name: &str, consumer_group: &str) -> String{
+    fn handle_topic(&mut self, topic_request: TypedReader::<Builder<HeapAllocator>, topic_request::Owned>) -> Vec<u8> {
+        let cp_request = topic_request.get().unwrap();
+        let topic_name = cp_request.get_topic_name().unwrap();
+        let found_index = self.check_topics(topic_name);
+        match found_index {
+            Some(_) => {
+                warn!("topic already exisits");
+                let data = new_topic_response(topic_name, false);
+                return data;
+            },
+            None => {
+                let topic = Topic::new(topic_name.to_string(), self.base_directory.clone());
+                fs::create_dir_all(&topic.directory).expect("Unable to create directory");
+                {
+                    self.topics.write().expect("unable to get write lock").push(Arc::new(RwLock::new(topic)));
+                }
+                self.flush();
+                let data = new_topic_response(topic_name, true);
+                return data;
+            }
+        }
+    }
+
+    fn handle_consumer(&mut self, consume_request: TypedReader::<Builder<HeapAllocator>, consume_request::Owned>) -> Vec<u8>{
         info!("Handling consumer message");
+        let consume_request_reader = consume_request.get().unwrap();
+        let topic_name = consume_request_reader.get_topic_name().unwrap();
+        let consumer_group = consume_request_reader.get_consumer_group().unwrap();
+        let timeout = consume_request_reader.get_timout();
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(x) => {
@@ -119,54 +139,47 @@ impl Broker {
                 let mut consumer= Consumer::new(found_topic.clone(),
                      consumer_group,
                      Box::new(move || broker.flush()));
-                let messages = consumer.poll(1000);
+                let messages = consumer.poll(timeout);
                 info!("{}", messages.len());
                 for message in messages {
                     info!("------------------------------------------");
                     info!("{:?}", message);
                 }
+                let data = new_consume_response(topic_name, true);
+                return data;
             },
             None => {
                 warn!("topic does not exist");
+                let data = new_consume_response(topic_name, false);
+                return data;
             }
         } 
-        return "consumed".to_string();
     }
 
-    fn handle_producer(&mut self, topic_name: &str, data: Vec<u8>) -> String{
+    fn handle_producer(&mut self, produce_request: TypedReader::<Builder<HeapAllocator>, produce_request::Owned>) -> Vec<u8> {
         info!("Handling producer message");
+        let req = produce_request.get().unwrap();
+        let topic_name = req.get_topic_name().unwrap();
         let found_index = self.check_topics(topic_name);
-
         match found_index {
             Some(x) => {
                 let found_topic = &self.topics.read().expect("unable to get read lock")[x];
                 let mut producer = Producer::new(found_topic.clone());
-                producer.produce_bytes(&data);
-            },
-            None => {
-                warn!("topic does not exist");
-            }
-        }
-        return "produced".to_string();
-    }
-    
-    fn new_topic(&mut self, topic_name: &str) -> String {
-        let found_index = self.check_topics(topic_name);
-        match found_index {
-            Some(_) => {
-                warn!("topic already exisits")
-            },
-            None => {
-                let topic = Topic::new(topic_name.to_string(), self.base_directory.clone());
-                fs::create_dir_all(&topic.directory).expect("Unable to create directory");
-                {
-                    self.topics.write().expect("unable to get write lock").push(Arc::new(RwLock::new(topic)));
+                // Parse out cap n proto produce messages and submit them to the commitlog
+                let cap_msgs = req.get_messages().unwrap();
+                let mut last_offset = 0;
+                for msg in cap_msgs {
+                    let mut builder_message = Builder::new_default();
+                    builder_message.set_root(msg).unwrap();
+                    let bytes = serialize::write_message_to_words(&builder_message);
+                    last_offset = producer.produce_bytes(&bytes);
                 }
-                self.flush();
+                return new_produce_response(topic_name, last_offset.into(), true);
+            },
+            None => {
+                return new_produce_response(topic_name, 0, false);
             }
         }
-        return "topiced".to_string()
-        
     }
 
     fn check_topics(&mut self, topic_to_find: &str) -> Option<usize> {

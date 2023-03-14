@@ -22,42 +22,30 @@ fn cli() -> Command<'static> {
         .allow_external_subcommands(true)
         .allow_invalid_utf8_for_external_subcommands(true)
         .subcommand(
-            Command::new("topic")
-                .about("Create a new topic")
-                .arg(arg!(<TOPIC> "The topic name you want to create"))
-                .arg_required_else_help(true),
-        )
-        .subcommand(
-            Command::new("produce")
-                .about("produce messages")
-                .arg(arg!(<TOPIC> "The topic you want to produce to"))
-                .arg_required_else_help(true),
-        )
-        .subcommand(
-            Command::new("consume")
-                .about("consume messages")
-                .arg(arg!(<TOPIC> "The topic you want to consume from"))
-                .arg_required_else_help(true)
-                .arg(arg!(<CONSUMER_GROUP> "The consumer group you want to use"))
+            Command::new("connect")
+                .about("Connect to a LucidMQ broker instance")
+                .arg(arg!(<ADDRESS> "The address where your LucidMQ is"))
+                .arg(arg!(<PORT> "The port where your LucidMQ is"))
                 .arg_required_else_help(true),
         )
 }
 
 #[tokio::main]
 async fn main() {
-    Builder::new().filter_level(LevelFilter::Info).init();
-    let addr = "127.0.0.1:5000".parse().unwrap();
-    let res = client::run_client(addr).await;
-    res.expect("NO ERRORS PLEASSE")
-    
-    // let matches = cli().get_matches();
+    Builder::new().filter_level(LevelFilter::Info).init();    
+    let matches = cli().get_matches();
 
-    // match matches.subcommand() {
-    //     Some(("topic", sub_matches)) => {
-    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-    //         println!("Creating topic {}", topic_name);
-    //         //create_topic(topic_name.to_string());
-    //     }
+    match matches.subcommand() {
+        Some(("connect", sub_matches)) => {
+            let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
+            let port = sub_matches.get_one::<String>("PORT").expect("required");
+
+            let connection_string = format!("{}:{}", address, port).parse().unwrap();
+            let res = client::run_client(connection_string).await;
+            res.expect("Unable to connect to server");
+        }
+        _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
+    }
     //     Some(("produce", sub_matches)) => {
     //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
     //         println!("producing to {}", topic_name);

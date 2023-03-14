@@ -6,15 +6,15 @@ use crate::lucid_schema_capnp::{topic_response, produce_response, consume_respon
 
 use crate::types::{Command};
 
-pub fn new_topic_response() -> Vec<u8> {
+pub fn new_topic_response(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut topic_response = request_message.init_root::<topic_response::Builder>();
 
-    topic_response.set_topic_name("topic1");
-    topic_response.set_success(true);
+    topic_response.set_topic_name(topic_name);
+    topic_response.set_success(is_success);
     topic_response.set_create(());
 
     message_envelope.set_topic_response(topic_response.reborrow_as_reader()).expect("Unable to set message");
@@ -25,16 +25,16 @@ pub fn new_topic_response() -> Vec<u8> {
     return framed_message;
 }
 
-pub fn new_produce_response() -> Vec<u8> {
+pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut produce_response = request_message.init_root::<produce_response::Builder>();
 
-    produce_response.set_topic_name("topic1");
-    produce_response.set_offset(0);
-    produce_response.set_success(true);
+    produce_response.set_topic_name(topic_name);
+    produce_response.set_offset(last_offset);
+    produce_response.set_success(is_success);
 
     message_envelope.set_produce_response(produce_response.reborrow_as_reader()).expect("Unable to set message");
 
@@ -44,15 +44,16 @@ pub fn new_produce_response() -> Vec<u8> {
     return framed_message;
 }
 
-pub fn new_consume_response() -> Vec<u8> {
+pub fn new_consume_response(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut consume_reponse = request_message.init_root::<consume_response::Builder>();
 
-    consume_reponse.set_success(true);
-    consume_reponse.set_topic_name("topic1");
+    consume_reponse.set_success(is_success);
+    consume_reponse.set_topic_name(topic_name);
+    
     let mut messages = consume_reponse.init_messages(1);
     {
         let mut message_thing = messages.reborrow().get(0);

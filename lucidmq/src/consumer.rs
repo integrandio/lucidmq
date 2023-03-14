@@ -5,6 +5,7 @@ use std::sync::{Arc, RwLock};
 use std::thread;
 use std::time::{Duration, Instant};
 
+/// Consumer struct for directly interacting with the commitlog in a consuming fashion
 pub struct Consumer {
     topic: Arc<RwLock<Topic>>,
     consumer_group: Arc<ConsumerGroup>,

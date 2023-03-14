@@ -95,8 +95,8 @@ async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::Unboun
 }
 
 
-pub fn parse_mesage(websocket_message: &str) -> Vec<u8> {
-    match websocket_message {
+pub fn parse_mesage(console_msg: &str) -> Vec<u8> {
+    match console_msg {
         "produce\n" => {
             request_builder::new_produce_request()
         },
