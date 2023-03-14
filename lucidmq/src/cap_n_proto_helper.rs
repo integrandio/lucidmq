@@ -84,7 +84,6 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
         ReaderOptions::new()
     ).unwrap();
 
-    //let typed_reader = TypedReader::<_, message_envelope::Owned>::new(reader);
     let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
     match message_envelope.which() {
         Ok(message_envelope::TopicRequest(envelope_topic_request)) => {

@@ -21,7 +21,6 @@ impl Consumer {
         new_consumer_group: Arc<ConsumerGroup>,
         callback: Box<dyn Fn()>,
     ) -> Consumer {
-        //let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size_bytes);
         let mut consumer = Consumer {
             topic: consumer_topic,
             consumer_group: new_consumer_group,
