@@ -23,13 +23,10 @@ jobs:
         username: ${{  secrets.DOCKER_REGISTRY_USER }}
         password: ${{  secrets.DOCKER_REGISTRY_PASSWORD }}
     steps:
-      - name: investigate
-        run: |
-          echo $PATH
-          cargo --help
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Run with Docker
-        run: |
-          cd lucidmq
-          cargo build --verbose
+      - run: cd lucidmq
+      - name: LucidMQ Build
+        run: cargo build --verbose
+      - name: LucidMQ Test
+        run: cargo test --verbose

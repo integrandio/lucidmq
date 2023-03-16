@@ -27,7 +27,7 @@ pub fn parse_response(data: Vec<u8>) {
         },
         Ok(message_envelope::ConsumeResponse(envelope_consume_response)) => {
             let consume_response = envelope_consume_response.unwrap();
-            info!("Topic Response ------------");
+            info!("Consume Response ------------");
             info!("Topic Name: {}", consume_response.get_topic_name().unwrap());
             info!("Status: {}", consume_response.get_success());
             let messages = consume_response.get_messages().unwrap();

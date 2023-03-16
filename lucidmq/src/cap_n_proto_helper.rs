@@ -1,8 +1,8 @@
 use capnp::message::{Builder, ReaderOptions, TypedReader, TypedBuilder};
 use capnp::serialize::{self};
-use log::info;
+use log::{info};
 
-use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request};
+use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request, message};
 
 use crate::types::{Command};
 
@@ -44,22 +44,37 @@ pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool
     return framed_message;
 }
 
-pub fn new_consume_response(topic_name: &str, is_success: bool) -> Vec<u8> {
+pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Vec<Vec<u8>>) -> Vec<u8> {
+    //tester(message_data.clone().into_iter().flatten().collect());
+
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut consume_reponse = request_message.init_root::<consume_response::Builder>();
 
-    consume_reponse.set_success(is_success);
     consume_reponse.set_topic_name(topic_name);
-    
-    let mut messages = consume_reponse.init_messages(1);
-    {
-        let mut message_thing = messages.reborrow().get(0);
-        message_thing.set_key("key".as_bytes());
-        message_thing.set_value("value".as_bytes());
-        message_thing.set_timestamp(1);
+
+    if is_success || message_data.len() > 0 {
+        consume_reponse.set_success(is_success);
+        let size = u32::try_from(message_data.len()).unwrap();
+        let mut messages = consume_reponse.init_messages(size);
+
+        for (i, msg) in message_data.iter().enumerate() {
+            let message_reader = serialize::read_message(
+                msg.as_slice(),
+                ReaderOptions::new()
+            ).unwrap();
+            let reader = message_reader.get_root::<message::Reader>().unwrap();
+            let thing = u32::try_from(i).unwrap();
+            info!("CREATING LIST ind {} {:?}", thing, reader.get_key().unwrap());
+            {
+                messages.reborrow().set_with_caveats(thing, reader).unwrap();
+            }
+        }
+    } else {
+        consume_reponse.set_success(false);
+        consume_reponse.init_messages(0);
     }
     message_envelope.set_consume_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
 

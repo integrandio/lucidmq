@@ -140,17 +140,13 @@ impl Broker {
                      consumer_group,
                      Box::new(move || broker.flush()));
                 let messages = consumer.poll(timeout);
-                info!("{}", messages.len());
-                for message in messages {
-                    info!("------------------------------------------");
-                    info!("{:?}", message);
-                }
-                let data = new_consume_response(topic_name, true);
+                let data = new_consume_response(topic_name, true, messages);
                 return data;
             },
             None => {
                 warn!("topic does not exist");
-                let data = new_consume_response(topic_name, false);
+                let message_data = Vec::new();
+                let data = new_consume_response(topic_name, false, message_data);
                 return data;
             }
         } 
