@@ -32,8 +32,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
     loop {
         let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
         let message_size: u16 = match bytes_read {
-            Some(total) => {
-                println!("First Bytes recieved {:?} size {}", buf, total);
+            Some(_total) => {
                 let message_size = u16::from_le_bytes(buf);
                 message_size
             },
@@ -103,8 +102,14 @@ pub fn parse_mesage(console_msg: &str) -> Vec<u8> {
         "consume\n" => {
             request_builder::new_consume_message()
         }
-        "topic\n" =>{
-            request_builder::new_topic_request()
+        "topic_create\n" =>{
+            request_builder::new_topic_request_create()
+        },
+        "topic_describe\n" =>{
+            request_builder::new_topic_request_describe()
+        },
+        "topic_delete\n" =>{
+            request_builder::new_topic_request_delete()
         },
         _ => {
             panic!("response not recognized")

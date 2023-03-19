@@ -142,7 +142,10 @@ impl Commitlog {
     //         .expect("Unable to get current segment");
     //     current_segment.reload().expect("Unable to reload segment");
     // }
-
+    
+    pub fn get_max_segment_size(&self) -> u64 {
+        self.max_segment_size
+    }
     
     /// Load segments in from the commitlog directory that have not been loaded into memory yet.
     pub fn reload_segments(&mut self) {

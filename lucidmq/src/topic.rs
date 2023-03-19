@@ -109,4 +109,13 @@ impl Topic {
             commitlog: new_commitlog
         }
     }
+
+    pub fn get_consumer_groups(&self) -> Vec<String> {
+        let cg_names = self.consumer_groups.iter().map(|x| x.name.clone()).collect();
+        return cg_names;
+    }
+
+    pub fn get_max_segment_size(&self) -> u64{
+        self.commitlog.get_max_segment_size()
+    }
 }

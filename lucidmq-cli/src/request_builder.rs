@@ -4,7 +4,7 @@ use capnp::serialize;
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 
 
-pub fn new_topic_request() -> Vec<u8> {
+pub fn new_topic_request_create() -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
@@ -13,6 +13,40 @@ pub fn new_topic_request() -> Vec<u8> {
 
     topic_request.set_topic_name("topic1");
     topic_request.set_create(());
+
+    message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
+
+    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
+    let framed_message = create_message_frame(serialized_message);
+    framed_message
+}
+
+pub fn new_topic_request_describe() -> Vec<u8> {
+    let mut request_message_envelope = Builder::new_default();
+    let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_request = request_message.init_root::<topic_request::Builder>();
+
+    topic_request.set_topic_name("topic1");
+    topic_request.set_describe(());
+
+    message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
+
+    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
+    let framed_message = create_message_frame(serialized_message);
+    framed_message
+}
+
+pub fn new_topic_request_delete() -> Vec<u8> {
+    let mut request_message_envelope = Builder::new_default();
+    let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_request = request_message.init_root::<topic_request::Builder>();
+
+    topic_request.set_topic_name("topic1");
+    topic_request.set_delete(());
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
 

@@ -45,25 +45,5 @@ async fn main() {
             res.expect("Unable to connect to server");
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
-    }
-    //     Some(("produce", sub_matches)) => {
-    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-    //         println!("producing to {}", topic_name);
-    //         //run_producer(topic_name.to_string());
-    //     }
-    //     Some(("consume", sub_matches)) => {
-    //         let topic_name = sub_matches.get_one::<String>("TOPIC").expect("required");
-    //         let consumer_group_name = sub_matches
-    //             .get_one::<String>("CONSUMER_GROUP")
-    //             .expect("required");
-    //         println!(
-    //             "Consuming from {}  with {}",
-    //             topic_name, consumer_group_name
-    //         );
-    //         //run_consumer(topic_name.to_string(), consumer_group_name.to_string());
-    //     }
-    //     _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
-    // }
-
-    // Continued program logic goes here...
+    } 
 }

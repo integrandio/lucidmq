@@ -6,7 +6,7 @@ use crate::lucid_schema_capnp::{topic_response, produce_response, consume_respon
 
 use crate::types::{Command};
 
-pub fn new_topic_response(topic_name: &str, is_success: bool) -> Vec<u8> {
+pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
@@ -24,6 +24,66 @@ pub fn new_topic_response(topic_name: &str, is_success: bool) -> Vec<u8> {
 
     return framed_message;
 }
+
+
+pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_retention: u64, max_segment: u64, consumer_groups: Vec<String>) -> Vec<u8> {
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_response = request_message.init_root::<topic_response::Builder>();
+
+    topic_response.set_topic_name(topic_name);
+    
+    if is_success && consumer_groups.len() > 0 {
+        topic_response.set_success(is_success);
+        let mut describe = topic_response.init_describe();
+        describe.set_max_retention_bytes(max_retention);
+        describe.set_max_segment_bytes(max_segment);
+        //Builde our consumer group response
+        let size = u32::try_from(consumer_groups.len()).unwrap();
+        let mut cgs = describe.init_consumer_groups(size);
+        for (i, consumer_group) in consumer_groups.iter().enumerate() {
+            let ind_u32 = u32::try_from(i).unwrap();
+            {
+                cgs.reborrow().set(ind_u32, consumer_group);
+            }
+        }
+    } else {
+        topic_response.set_success(is_success);
+        let mut describe = topic_response.init_describe();
+        describe.set_max_retention_bytes(max_retention);
+        describe.set_max_segment_bytes(max_segment);
+        describe.init_consumer_groups(0);
+
+    }
+    message_envelope.set_topic_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
+
+    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
+    let framed_message = create_message_frame(serialized_message);
+
+    return framed_message;
+}
+
+pub fn new_topic_response_delete(topic_name: &str, is_success: bool) -> Vec<u8>{
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_response = request_message.init_root::<topic_response::Builder>();
+
+    topic_response.set_topic_name(topic_name);
+    topic_response.set_success(is_success);
+    topic_response.set_delete(());
+
+    message_envelope.set_topic_response(topic_response.reborrow_as_reader()).expect("Unable to set message");
+
+    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
+    let framed_message = create_message_frame(serialized_message);
+
+    return framed_message;
+}
+
 
 pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
@@ -45,8 +105,6 @@ pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool
 }
 
 pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Vec<Vec<u8>>) -> Vec<u8> {
-    //tester(message_data.clone().into_iter().flatten().collect());
-
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
 
@@ -55,7 +113,7 @@ pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Ve
 
     consume_reponse.set_topic_name(topic_name);
 
-    if is_success || message_data.len() > 0 {
+    if is_success && message_data.len() > 0 {
         consume_reponse.set_success(is_success);
         let size = u32::try_from(message_data.len()).unwrap();
         let mut messages = consume_reponse.init_messages(size);

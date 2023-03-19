@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 use log::{debug, info, warn, error};
-use crate::cap_n_proto_helper::{new_topic_response, new_produce_response, new_consume_response};
+use crate::cap_n_proto_helper::{new_topic_response_create, new_topic_response_describe, new_topic_response_delete, new_produce_response, new_consume_response};
 
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -74,7 +74,6 @@ impl Broker {
             info!("message came through {:?}", command);
             let response_command = match command {
                 Command::TopicRequest { conn_id, capmessage } => {
-                    //let cp_request = capmessage.get().unwrap();
                     let data = self.handle_topic(capmessage);
                     Command::Response { conn_id: conn_id, capmessagedata: data}
                 }
@@ -101,15 +100,31 @@ impl Broker {
         }
     }
 
-    fn handle_topic(&mut self, topic_request: TypedReader::<Builder<HeapAllocator>, topic_request::Owned>) -> Vec<u8> {
-        let cp_request = topic_request.get().unwrap();
-        let topic_name = cp_request.get_topic_name().unwrap();
+    fn handle_topic(&mut self, topic_request_message: TypedReader::<Builder<HeapAllocator>, topic_request::Owned>) -> Vec<u8> {
+        let topic_request = topic_request_message.get().unwrap();
+        let topic_name = topic_request.get_topic_name().unwrap();
+        match topic_request.which() {
+            Ok(topic_request::Which::Create(_create_request)) => {
+                self.handle_create_topic(topic_name)
+            },
+            Ok(topic_request::Which::Delete(_delete_request)) => {
+                self.handle_delete_topic(topic_name)
+            },
+            Ok(topic_request::Which::Describe(_describe_request)) => {
+                self.handle_describe_topic(topic_name)
+            },
+            Err(_) => {
+                unimplemented!()
+            }
+        }
+    }
+
+    fn handle_create_topic(&mut self, topic_name: &str) -> Vec<u8>{
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(_) => {
                 warn!("topic already exisits");
-                let data = new_topic_response(topic_name, false);
-                return data;
+                new_topic_response_create(topic_name, false)
             },
             None => {
                 let topic = Topic::new(topic_name.to_string(), self.base_directory.clone());
@@ -118,8 +133,50 @@ impl Broker {
                     self.topics.write().expect("unable to get write lock").push(Arc::new(RwLock::new(topic)));
                 }
                 self.flush();
-                let data = new_topic_response(topic_name, true);
-                return data;
+                new_topic_response_create(topic_name, false)
+            }
+        }
+    }
+
+    fn handle_describe_topic(&mut self, topic_name: &str) -> Vec<u8> {
+        let found_index = self.check_topics(topic_name);
+        match found_index {
+            Some(ind) => {
+                let topics = self.topics.read().unwrap();
+                let topic = topics.get(ind).unwrap().read().unwrap();
+                let cgs = topic.get_consumer_groups();
+                let max_segment_size = topic.get_max_segment_size();
+                info!("{}, {:?}, {}", topic_name, cgs, max_segment_size);
+                new_topic_response_describe(topic_name, true, 0, max_segment_size, cgs)
+            },
+            None => {
+                warn!("topic does not exist");
+                let dummy_vec = Vec::new();
+                new_topic_response_describe(topic_name, false, 0, 0, dummy_vec)
+            }
+        }
+    }
+
+    fn handle_delete_topic(&mut self, topic_name: &str) -> Vec<u8> {
+        let found_index = self.check_topics(topic_name);
+        match found_index {
+            Some(ind) => {
+                // Get the topic directory
+                let topics = self.topics.read().unwrap();
+                let topic = topics.get(ind).unwrap().read().unwrap();
+                let topic_directory = &topic.directory.clone();
+                // Clean up access since we dont need them anymore
+                drop(topic);
+                drop(topics);
+                // Remove the topic from the topic vector
+                self.topics.write().expect("unable to get topics write lock").remove(0);
+                self.flush();
+                fs::remove_dir_all(topic_directory).expect("Unable to delete topic directory");
+                new_topic_response_delete(topic_name, true)
+            },
+            None => {
+                warn!("topic does not exist");
+                new_topic_response_delete(topic_name, false)
             }
         }
     }
