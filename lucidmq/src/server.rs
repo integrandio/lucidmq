@@ -2,6 +2,7 @@ use log::{info, error};
 use quinn::{Endpoint, ServerConfig, SendStream};
 use tokio::sync::Mutex;
 use std::process::exit;
+use std::time::Duration;
 use std::{error::Error, net::SocketAddr, sync::Arc, collections::HashMap};
 
 use rand::{thread_rng, Rng};
@@ -212,7 +213,9 @@ fn configure_server() -> Result<(ServerConfig, Vec<u8>), Box<dyn Error>> {
     let mut server_config = ServerConfig::with_single_cert(cert_chain, priv_key)?;
     Arc::get_mut(&mut server_config.transport)
         .unwrap()
-        .max_concurrent_uni_streams(0_u8.into());
+        .max_idle_timeout(Some(quinn::VarInt::from_u32(300_000).into()))
+        .keep_alive_interval(Some(Duration::from_secs(60)))
+        .max_concurrent_uni_streams(255_u8.into());
 
     Ok((server_config, cert_der))
 }

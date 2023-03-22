@@ -358,6 +358,19 @@ mod commitlog_tests {
     }
 
     #[test]
+    fn test_append_multiple() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir.path().to_str().expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000);
+        let test_data = "message".as_bytes();
+        for n in 0..10 {
+            let offset = cl.append(test_data);
+            assert_eq!(n, offset);
+        }
+    }
+
+    #[test]
     fn test_split() {
         let number_of_iterations = 20;
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");

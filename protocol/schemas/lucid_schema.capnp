@@ -23,6 +23,12 @@ struct TopicRequest {
   }
 }
 
+
+# describe :group {
+# maxSegmentBytes :UInt64;
+#maxRetentionBytes:UInt64;
+#
+#}
 struct TopicResponse {
   topicName @0 :Text;
   success @1 :Bool;

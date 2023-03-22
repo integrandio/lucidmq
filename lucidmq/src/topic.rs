@@ -35,6 +35,8 @@ pub struct Topic {
     pub name: String,
     pub directory: String,
     pub consumer_groups: Vec<Arc<ConsumerGroup>>,
+    pub max_segment_size: u64,
+    pub max_topic_size: u64,
     #[serde(skip_serializing)]
     pub commitlog: Commitlog,
 }
@@ -44,22 +46,26 @@ struct DeserTopic {
     name: String,
     directory: String,
     consumer_groups: Vec<Arc<ConsumerGroup>>,
+    pub max_segment_size: u64,
+    pub max_topic_size: u64,
 }
 
 impl From<DeserTopic> for Topic {
     fn from(tmp: DeserTopic) -> Self {
-        let commitlog = nolan::Commitlog::new(tmp.directory.clone(), 1000, 100);
+        let commitlog = nolan::Commitlog::new(tmp.directory.clone(), tmp.max_segment_size, tmp.max_topic_size);
         Self {
             name: tmp.name,
             directory: tmp.directory,
             consumer_groups: tmp.consumer_groups,
+            max_segment_size: tmp.max_segment_size,
+            max_topic_size: tmp.max_topic_size,
             commitlog: commitlog
         }
     }
 }
 
 impl Topic {
-    pub fn new(topic_name: String, base_directory: String) -> Topic {
+    pub fn new(topic_name: String, base_directory: String, max_segment_size: u64, max_topic_size: u64) -> Topic {
         debug!("Creating a new topic {}", topic_name);
         let path = Path::new(&base_directory);
         // Generate a random directory name
@@ -73,7 +79,7 @@ impl Topic {
         let new_commitlog = nolan::Commitlog::new(new_path
             .to_str()
             .expect("unable to convert to string")
-            .to_string(), 100, 1000);
+            .to_string(), max_segment_size, max_topic_size);
         Topic {
             name: topic_name,
             directory: new_path
@@ -81,7 +87,9 @@ impl Topic {
                 .expect("unable to convert to string")
                 .to_string(),
             consumer_groups: new_consumer_groups,
-            commitlog: new_commitlog
+            commitlog: new_commitlog,
+            max_segment_size: max_segment_size,
+            max_topic_size: max_topic_size,
         }
     }
 
@@ -96,19 +104,19 @@ impl Topic {
         new_gc
     }
 
-    pub fn _new_topic_from_ref(topic_ref: &Topic) -> Topic {
-        let mut new_consumer_groups = Vec::new();
-        for cg in &topic_ref.consumer_groups {
-            new_consumer_groups.push(cg.clone());
-        }
-        let new_commitlog = nolan::Commitlog::new(topic_ref.directory.clone(), 1000, 100);
-        Topic {
-            name: topic_ref.name.clone(),
-            directory: topic_ref.directory.clone(),
-            consumer_groups: new_consumer_groups,
-            commitlog: new_commitlog
-        }
-    }
+    // pub fn _new_topic_from_ref(topic_ref: &Topic) -> Topic {
+    //     let mut new_consumer_groups = Vec::new();
+    //     for cg in &topic_ref.consumer_groups {
+    //         new_consumer_groups.push(cg.clone());
+    //     }
+    //     let new_commitlog = nolan::Commitlog::new(topic_ref.directory.clone(), 1000, 100);
+    //     Topic {
+    //         name: topic_ref.name.clone(),
+    //         directory: topic_ref.directory.clone(),
+    //         consumer_groups: new_consumer_groups,
+    //         commitlog: new_commitlog
+    //     }
+    // }
 
     pub fn get_consumer_groups(&self) -> Vec<String> {
         let cg_names = self.consumer_groups.iter().map(|x| x.name.clone()).collect();

@@ -4,14 +4,23 @@ use capnp::serialize;
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 
 
-pub fn new_topic_request_create() -> Vec<u8> {
+pub fn new_topic_request(topic_name: &str, topic_request_type: &str) -> Vec<u8> {
+    match topic_request_type {
+        "create" => new_topic_request_create(topic_name),
+        "describe" => new_topic_request_describe(topic_name),
+        "delete" => new_topic_request_delete(topic_name),
+        _ => panic!("Invalid topic command...")
+    }
+}
+
+fn new_topic_request_create(topic_name: &str) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut topic_request = request_message.init_root::<topic_request::Builder>();
 
-    topic_request.set_topic_name("topic1");
+    topic_request.set_topic_name(topic_name);
     topic_request.set_create(());
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
@@ -21,14 +30,14 @@ pub fn new_topic_request_create() -> Vec<u8> {
     framed_message
 }
 
-pub fn new_topic_request_describe() -> Vec<u8> {
+fn new_topic_request_describe(topic_name: &str) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut topic_request = request_message.init_root::<topic_request::Builder>();
 
-    topic_request.set_topic_name("topic1");
+    topic_request.set_topic_name(topic_name);
     topic_request.set_describe(());
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
@@ -38,14 +47,14 @@ pub fn new_topic_request_describe() -> Vec<u8> {
     framed_message
 }
 
-pub fn new_topic_request_delete() -> Vec<u8> {
+fn new_topic_request_delete(topic_name: &str) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut topic_request = request_message.init_root::<topic_request::Builder>();
 
-    topic_request.set_topic_name("topic1");
+    topic_request.set_topic_name(topic_name);
     topic_request.set_delete(());
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
@@ -55,14 +64,14 @@ pub fn new_topic_request_delete() -> Vec<u8> {
     framed_message
 }
 
-pub fn new_produce_request() -> Vec<u8> {
+pub fn new_produce_request(topic_name: &str) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
     let mut request_message = Builder::new_default();
     {
         let mut produce_request = request_message.init_root::<produce_request::Builder>();
     
-        produce_request.set_topic_name("topic1");
+        produce_request.set_topic_name(topic_name);
     
         let mut messages = produce_request.init_messages(1);
         {
@@ -80,15 +89,15 @@ pub fn new_produce_request() -> Vec<u8> {
     framed_message
 }
 
-pub fn new_consume_message() -> Vec<u8> {
+pub fn new_consume_message(topic_name: &str, consumer_group: &str) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
     let mut request_message = Builder::new_default();
     let mut consume_request = request_message.init_root::<consume_request::Builder>();
 
-    consume_request.set_topic_name("topic1");
-    consume_request.set_consumer_group("cg1");
+    consume_request.set_topic_name(topic_name);
+    consume_request.set_consumer_group(consumer_group);
     consume_request.set_timout(1);
 
 

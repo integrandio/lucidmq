@@ -236,14 +236,12 @@ mod virtual_segment_tests {
     #[test]
     fn test_message_greater_than_segment() {
         let mut vs = VirtualSegment::new("test_dir", 10, 0);
-        let data = "000000000000000".as_bytes();
+        let bytes: [u8; 11] = [0; 11];
         let segment_error = vs
-            .write(data)
+            .write(&bytes)
             .unwrap_err();
         let want = SegmentError::new("Write not possible. Segment log would be greater than max bytes");
-
         assert_eq!(want, segment_error);
-
     }
 
     #[test]

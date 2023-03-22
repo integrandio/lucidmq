@@ -1,12 +1,10 @@
+use log::{debug};
 use quinn::{ClientConfig, Endpoint, SendStream};
-use tokio::{io::AsyncReadExt};
+use tokio::sync::mpsc::UnboundedReceiver;
 use std::{error::Error, net::SocketAddr, sync::Arc};
-
 use crate::cap_n_proto_helper;
-use crate::request_builder;
 
-
-pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
+pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec<u8>>) -> Result<(), Box<dyn Error>> {
     let client_cfg = configure_client();
     let mut endpoint = Endpoint::client("127.0.0.1:0".parse().unwrap())?;
     endpoint.set_default_client_config(client_cfg);
@@ -17,11 +15,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
         .unwrap()
         .await
         .unwrap();
-    println!("[client] connected: addr={}", connection.remote_address());
-
-    let (stdin_tx, stdin_rx) = tokio::sync::mpsc::unbounded_channel();
-
-    tokio::spawn(read_stdin(stdin_tx));
+    debug!("connected: addr={}", connection.remote_address());
     
     let (send, mut recv) = connection.open_bi().await.expect("Unable to open bidirection stream");
 
@@ -46,7 +40,7 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
         let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
         match message_bytes_read {
             Some(total) => {
-                println!("Second Bytes recieved {:?} size {}", message_buff, total);
+                debug!("Second Bytes recieved {:?} size {}", message_buff, total);
             },
             None => {
                 continue;
@@ -65,56 +59,14 @@ pub async fn run_client(server_addr: SocketAddr) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-// Our helper method which will read data from stdin and send it along the
-// sender provided.
-async fn read_stdin(tx: tokio::sync::mpsc::UnboundedSender<Vec<u8>>) {
-    let mut stdin = tokio::io::stdin();
-    loop {
-        let mut buf = vec![0; 1024];
-
-        let n = match stdin.read(&mut buf).await {
-            Err(_) | Ok(0) => break,
-            Ok(n) => n,
-        };
-        buf.truncate(n);
-
-        let s = String::from_utf8_lossy(&buf);
-        let request= parse_mesage(&s.to_string());
-        tx.send(request).expect("Unable to send message");
-    }
-}
-
-async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
+async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) -> bool {
     loop {
         let message = rx.recv().await.expect("Unable to recieve message");
-        println!("{:?}", message);
+        debug!("{:?}", message);
         send.write(&message).await.unwrap();//.expect("unable to write request bytes");
         //send.finish().await.expect("unable to finish connection");
     }
-}
-
-
-pub fn parse_mesage(console_msg: &str) -> Vec<u8> {
-    match console_msg {
-        "produce\n" => {
-            request_builder::new_produce_request()
-        },
-        "consume\n" => {
-            request_builder::new_consume_message()
-        }
-        "topic_create\n" =>{
-            request_builder::new_topic_request_create()
-        },
-        "topic_describe\n" =>{
-            request_builder::new_topic_request_describe()
-        },
-        "topic_delete\n" =>{
-            request_builder::new_topic_request_delete()
-        },
-        _ => {
-            panic!("response not recognized")
-        }
-    }
+    return true;
 }
 
 

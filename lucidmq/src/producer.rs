@@ -1,17 +1,17 @@
-use crate::topic::{Topic};
-use std::{sync::{Arc, RwLock}};
+use crate::topic::Topic;
+use std::sync::{Arc, RwLock};
 
 pub struct Producer {
-    topic: Arc<RwLock<Topic>>
+    topic: Arc<RwLock<Topic>>,
 }
 
 impl Producer {
-    pub fn new( producer_topic: Arc<RwLock<Topic>>) -> Producer {
+    pub fn new(producer_topic: Arc<RwLock<Topic>>) -> Producer {
         Producer {
-            topic: producer_topic
+            topic: producer_topic,
         }
     }
-    
+
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> u16 {
         self.topic.write().unwrap().commitlog.append(&bytes)
     }
