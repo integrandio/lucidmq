@@ -1,6 +1,6 @@
 use capnp::{serialize, message::ReaderOptions};
 use std::io::Write;
-use log::{info, warn};
+use log::{warn};
 
 use crate::lucid_schema_capnp::{message_envelope};
 

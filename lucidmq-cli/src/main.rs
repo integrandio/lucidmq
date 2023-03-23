@@ -1,5 +1,6 @@
 mod client;
 use std::io::Write;
+use std::{thread, time};
 use std::{net::SocketAddr};
 use clap::{arg, Command};
 use env_logger::Builder;
@@ -149,11 +150,14 @@ async fn main() -> Result<(), String> {
 
         match respond(line) {
             Ok(msg) => {
+                let msg_size = msg.len();
+                stdin_tx.send(msg).expect("Unable to send message");
                 //TODO: Change this to be more robust
-                if msg.len() == 1 {
+                if msg_size == 1 {
+                    // Wait for client code to cleanup.
+                    thread::sleep(time::Duration::from_millis(500));
                     break;
                 }
-                stdin_tx.send(msg).expect("Unable to send message")
             }
             Err(err) => {
                 write!(std::io::stdout(), "{err}").map_err(|e| e.to_string())?;
@@ -161,8 +165,6 @@ async fn main() -> Result<(), String> {
             }
         }
     }
-
+    info!("Exiting...");
     Ok(())
-
-
 }

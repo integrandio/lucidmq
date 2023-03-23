@@ -1,4 +1,4 @@
-use log::{info, error};
+use log::{info, error, warn};
 use quinn::{Endpoint, ServerConfig, SendStream};
 use tokio::sync::Mutex;
 use std::process::exit;
@@ -46,7 +46,7 @@ impl LucidQuicServer {
         // accept a single connection
         while let Some(conn) = endpoint.accept().await {
             info!(
-                "[server] connection accepted: addr={}",
+                "connection accepted: addr={}",
                 conn.remote_address()
             );
             let cloned_sender = self.sender.clone();
@@ -65,9 +65,12 @@ async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>, sende
     while let Ok((send_stream, recv_stream)) = connection.accept_bi().await {
         let id = generate_connection_string();
         peermap.lock().await.insert(id.clone(), send_stream);
-        handle_request(id, recv_stream, &sender).await;
-        //sender.send(command).await.expect("Unable to send message");
+        handle_request(id.clone(), recv_stream, &sender).await;
+        //If handle request is exited, we can remove the connection from our map
+        peermap.lock().await.remove(&id);
     }
+    info!("Closing connection");
+    connection.close(0u32.into(), b"done");
 
     // async {
     //     info!("running");
@@ -93,6 +96,54 @@ async fn handle_connection(conn: quinn::Connecting, peermap: Arc<PeerMap>, sende
     // }.await;
 }
 
+async fn handle_request(conn_id: String, mut recv: quinn::RecvStream, sender: &SenderType) {
+    let mut buf = [0u8; 2];
+    loop {
+        let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
+        let message_size: u16 = match bytes_read {
+            Some(total) => {
+                info!("First Bytes recieved {:?} size {}", buf, total);
+                let message_size = u16::from_le_bytes(buf);
+                message_size
+            },
+            None => {
+                warn!("No new bytes in stream, exiting request stream");
+                recv.stop(0u32.into()).unwrap_or_else(|err| {
+                    warn!("{}", err)
+                });
+                break;
+            }
+        };
+        let mut message_vec = vec![0u8; message_size.into()];
+        let message_buff = &mut message_vec;
+
+        let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
+        match message_bytes_read {
+            Some(total) => {
+                println!("Second Bytes recieved {:?} size {}", message_buff, total);
+            },
+            None => {
+                warn!("No new bytes in stream, exiting request stream");
+                recv.stop(0u32.into()).unwrap_or_else(|err| {
+                    warn!("{}", err)
+                });
+                break;
+            }
+        };
+        let msg = parse_request(conn_id.clone(), message_buff.clone());
+        sender.send(msg).await.expect("Unble to send message");
+    }
+}
+
+fn generate_connection_string() -> String {
+    let rand_string: String = thread_rng()
+        .sample_iter(&Alphanumeric)
+        .take(10)
+        .map(char::from)
+        .collect();
+    return rand_string;
+}
+
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
         info!("Recieved message");
@@ -116,85 +167,6 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     }
 }
 
-async fn handle_request(conn_id: String, mut recv: quinn::RecvStream, sender: &SenderType) {
-    let mut buf = [0u8; 2];
-    loop {
-        let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
-        let message_size: u16 = match bytes_read {
-            Some(total) => {
-                info!("First Bytes recieved {:?} size {}", buf, total);
-                let message_size = u16::from_le_bytes(buf);
-                message_size
-            },
-            None => {
-                panic!("No new bytes in stream");
-                //break;
-            }
-        };
-        let mut message_vec = vec![0u8; message_size.into()];
-        let message_buff = &mut message_vec;
-
-        let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
-        match message_bytes_read {
-            Some(total) => {
-                println!("Second Bytes recieved {:?} size {}", message_buff, total);
-            },
-            None => {
-                //continue;
-                panic!("No new bytes in stream");
-                //break
-            }
-        };
-        let msg = parse_request(conn_id.clone(), message_buff.clone());
-        sender.send(msg).await.expect("Unble to send message");
-    }
-    //return msg;
-}
-
-fn generate_connection_string() -> String {
-    let rand_string: String = thread_rng()
-        .sample_iter(&Alphanumeric)
-        .take(10)
-        .map(char::from)
-        .collect();
-    return rand_string;
-}
-
-// pub fn parse_mesage(websocket_message: &str, conn_id: String) -> Command {
-//     info!("{:?}", websocket_message);
-//     match websocket_message {
-//         "produce" => {
-//             let payload = Payload {
-//                 conn_id: conn_id,
-//                 message: "produce".to_string(),
-//                 data: "data".as_bytes().to_vec()
-//             };
-//             Command::Produce(payload)
-//         },
-//         "consume" => {
-//             let payload = Payload {
-//                 conn_id: conn_id,
-//                 message: "consume".to_string(),
-//                 data: "data".as_bytes().to_vec()
-//             };
-//             Command::Consume(payload)
-//         }
-//         "topic" =>{
-//             let payload = Payload {
-//                 conn_id: conn_id,
-//                 message: "consume".to_string(),
-//                 data: "data".as_bytes().to_vec()
-//             };
-//             Command::Topic(payload)
-//         },
-//         _ => {
-//             info!("Cant parse message.... {}", websocket_message);
-//             Command::Invalid {
-//                 message: "invalid".to_string(),
-//             }
-//         }
-//     }
-// }
 
 // Helper Server endpoints
 fn make_server_endpoint(bind_addr: SocketAddr) -> Result<(Endpoint, Vec<u8>), Box<dyn Error>> {

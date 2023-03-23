@@ -1,5 +1,5 @@
-use log::{debug};
-use quinn::{ClientConfig, Endpoint, SendStream};
+use log::{debug, error, info};
+use quinn::{ClientConfig, Endpoint, SendStream, RecvStream};
 use tokio::sync::mpsc::UnboundedReceiver;
 use std::{error::Error, net::SocketAddr, sync::Arc};
 use crate::cap_n_proto_helper;
@@ -17,14 +17,47 @@ pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec
         .unwrap();
     debug!("connected: addr={}", connection.remote_address());
     
-    let (send, mut recv) = connection.open_bi().await.expect("Unable to open bidirection stream");
+    let (send, recv) = connection.open_bi().await.expect("Unable to open bidirection stream");
 
-    tokio::spawn(write_to_stream(send, stdin_rx));
-    
+    // Reading from QUIC stream is done in a thread
+    tokio::spawn(read_from_stream(recv));
+    // Main thread handles writing to the QUIC stream
+    write_to_stream(send, stdin_rx).await;
+    info!("Cleaning up connection");
+    connection.close(0u32.into(), b"done");
+    // Dropping handles allows the corresponding objects to automatically shut down
+    drop(connection);
+    // Make sure the server has a chance to clean up
+    endpoint.wait_idle().await;
+    info!("Closed");
+    Ok(())
+}
+
+async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
+    loop {
+        let message = rx.recv().await.expect("Unable to recieve message");
+        if message.len() == 1 {
+            break;
+        }
+        debug!("{:?}", message);
+        send.write(&message).await.unwrap();//.expect("unable to write request bytes");
+    }
+    send.finish().await.expect("unable to finish connection");
+}
+
+async fn read_from_stream(mut recv: RecvStream) {
     // This buffer is used to get the size of the actual message
     let mut buf = [0u8; 2];
     loop {
-        let bytes_read = recv.read(&mut buf).await.expect("unable to read message");
+        let message_size_reader_result = recv.read(&mut buf).await;
+        let bytes_read = match message_size_reader_result {
+            Ok(reader_bytes) => reader_bytes,
+            Err(err) => {
+                error!("{}", err);
+                recv.stop(0u32.into()).unwrap();
+                break;
+            },
+        };
         let message_size: u16 = match bytes_read {
             Some(_total) => {
                 let message_size = u16::from_le_bytes(buf);
@@ -37,7 +70,15 @@ pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec
         let mut message_vec = vec![0u8; message_size.into()];
         let message_buff = &mut message_vec;
 
-        let message_bytes_read = recv.read(message_buff).await.expect("unable to read message");
+        let message_reader_result = recv.read(message_buff).await;
+        let message_bytes_read = match message_reader_result {
+            Ok(reader_bytes) => reader_bytes,
+            Err(err) => {
+                error!("{}", err);
+                recv.stop(0u32.into()).unwrap();
+                break;
+            },
+        };
         match message_bytes_read {
             Some(total) => {
                 debug!("Second Bytes recieved {:?} size {}", message_buff, total);
@@ -48,25 +89,6 @@ pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec
         };
         cap_n_proto_helper::parse_response(message_buff.to_vec());
     }
-
-    connection.close(0u32.into(), b"done");
-
-    // Dropping handles allows the corresponding objects to automatically shut down
-    drop(connection);
-    // Make sure the server has a chance to clean up
-    endpoint.wait_idle().await;
-
-    Ok(())
-}
-
-async fn write_to_stream(mut send: SendStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) -> bool {
-    loop {
-        let message = rx.recv().await.expect("Unable to recieve message");
-        debug!("{:?}", message);
-        send.write(&message).await.unwrap();//.expect("unable to write request bytes");
-        //send.finish().await.expect("unable to finish connection");
-    }
-    return true;
 }
 
 
