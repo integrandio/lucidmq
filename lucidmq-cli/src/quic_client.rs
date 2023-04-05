@@ -121,6 +121,5 @@ fn configure_client() -> ClientConfig {
         .with_safe_defaults()
         .with_custom_certificate_verifier(SkipServerVerification::new())
         .with_no_client_auth();
-
     ClientConfig::new(Arc::new(crypto))
 }

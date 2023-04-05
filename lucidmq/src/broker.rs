@@ -69,6 +69,7 @@ impl Broker {
     }
 
     pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) {
+        info!("Broker is running");
         while let Some(command) = reciever.recv().await {
             info!("message came through {:?}", command);
             let response_command = match command {

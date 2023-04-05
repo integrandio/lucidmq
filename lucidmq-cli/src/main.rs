@@ -1,4 +1,4 @@
-mod client;
+mod tcp_client;
 use std::io::Write;
 use std::{thread, time};
 use std::{net::SocketAddr};
@@ -108,6 +108,8 @@ fn cli2() -> Command<'static> {
 }
 
 fn readline() -> Result<String, String> {
+    // Wait for client code to cleanup.
+    thread::sleep(time::Duration::from_millis(500));
     write!(std::io::stdout(), "> ").map_err(|e| e.to_string())?;
     std::io::stdout().flush().map_err(|e| e.to_string())?;
     let mut buffer = String::new();
@@ -135,8 +137,8 @@ async fn main() -> Result<(), String> {
             let connection_string: SocketAddr = format!("{}:{}", address, port).parse().unwrap();
             info!("Connected to {}", connection_string.to_string());
             tokio::spawn(async move {
-                let res = client::run_client(connection_string, stdin_rx).await;
-                res.expect("Server crashed unexpectedely")
+                let res = tcp_client::run_client(connection_string, stdin_rx).await;
+                res.expect("Server crashed unexpectedly")
             });
         }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()

@@ -3,7 +3,8 @@ mod cap_n_proto_helper;
 mod consumer;
 pub mod lucid_schema_capnp;
 mod producer;
-mod server;
+//mod quic_server;
+mod tcp_server;
 mod topic;
 mod types;
 
@@ -31,7 +32,7 @@ pub async fn main() {
             .run(request_channel_reciever, response_channel_sender)
             .await;
     });
-    let server = server::LucidQuicServer::new(request_channel_sender, response_channel_reciever);
-
+    let server = tcp_server::LucidTcpServer::new(request_channel_sender, response_channel_reciever);
+    // let server = quic_server::LucidQuicServer::new(request_channel_sender, response_channel_reciever);
     server.run_server().await;
 }
