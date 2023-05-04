@@ -124,6 +124,7 @@ impl Topic {
     }
 
     pub fn get_max_segment_size(&self) -> u64{
-        self.commitlog.get_max_segment_size()
+        self.max_segment_size
     }
+
 }

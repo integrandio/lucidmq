@@ -178,7 +178,7 @@ impl Broker {
                 let cgs = topic.get_consumer_groups();
                 let max_segment_size = topic.get_max_segment_size();
                 info!("{}, {:?}, {}", topic_name, cgs, max_segment_size);
-                new_topic_response_describe(topic_name, true, 0, max_segment_size, cgs)
+                new_topic_response_describe(topic_name, true, topic.max_topic_size, topic.max_segment_size, cgs)
             }
             None => {
                 warn!("topic does not exist");

@@ -11,11 +11,6 @@ use crate::cap_n_proto_helper::parse_request;
 
 use crate::types::Command;
 
-// use std::{
-//     io::{prelude::*},
-//     //net::{TcpListener, TcpStream},
-// };
-
 use tokio::{
     net::{TcpListener, TcpStream,
         tcp::{
@@ -84,13 +79,15 @@ async fn handle_connection(stream: TcpStream, peermap: Arc<PeerMap>, sender: Sen
 }
 
 async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType) {
-    let mut buf = [0u8; 2];
+    let mut buf;
     loop {
+        buf = [0u8; 2];
         recv.readable().await.unwrap_or_else(|err| {
             error!("TCP stream not readable: {}", err);
         });
         let bytes_read = recv.try_read(&mut buf);
         let message_size: u16 = match bytes_read {
+            Ok(0) => break,
             Ok(total) => {
                 info!("First Bytes recieved {:?} size {}", buf, total);
                 let message_size = u16::from_le_bytes(buf);

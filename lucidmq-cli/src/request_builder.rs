@@ -3,7 +3,6 @@ use capnp::serialize;
 
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 
-
 pub fn new_topic_request(topic_name: &str, topic_request_type: &str) -> Vec<u8> {
     match topic_request_type {
         "create" => new_topic_request_create(topic_name),
@@ -111,8 +110,8 @@ pub fn new_consume_message(topic_name: &str, consumer_group: &str) -> Vec<u8> {
 
 fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
     let size_u16= u16::try_from(original_message.len()).unwrap();
-    let thing = size_u16.to_le_bytes();
+    let size_in_bytes = size_u16.to_le_bytes();
     // Append the size in bytes to the begining of the vector
-    original_message.splice(0..0, thing.iter().cloned());
+    original_message.splice(0..0, size_in_bytes.iter().cloned());
     return original_message;
 }
