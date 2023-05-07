@@ -1,7 +1,6 @@
 use log::{info, error};
 use std::io;
 use tokio::sync::Mutex;
-use std::process::exit;
 use std::{net::SocketAddr, sync::Arc, collections::HashMap};
 
 use rand::{thread_rng, Rng};
@@ -88,8 +87,8 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
         let bytes_read = recv.try_read(&mut buf);
         let message_size: u16 = match bytes_read {
             Ok(0) => break,
-            Ok(total) => {
-                info!("First Bytes recieved {:?} size {}", buf, total);
+            Ok(_total) => {
+                // info!("First Bytes recieved {:?} size {}", buf, total);
                 let message_size = u16::from_le_bytes(buf);
                 message_size
             },
@@ -106,8 +105,8 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
 
         let message_bytes_read = recv.try_read(message_buff);
         match message_bytes_read {
-            Ok(total) => {
-                info!("Second Bytes recieved {:?} size {}", message_buff, total);
+            Ok(_total) => {
+                // info!("Second Bytes recieved {:?} size {}", message_buff, total);
             },
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
@@ -118,14 +117,14 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
             }
         };
         let msg = parse_request(conn_id.clone(), message_buff.clone());
-        info!("sending message: {:?}", msg);
+        // info!("sending message: {:?}", msg);
         sender.send(msg).await.expect("Unble to send message");
     }
 }
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
-        info!("Recieved message");
+        // info!("Recieved message");
         let id;
         let response_message: Vec<u8>;
         match command {
@@ -135,11 +134,16 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
             }
             _ => {
                 error!("Command not good");
-                exit(0)
+                continue;
             }
         }
         let mut wing = peermap.lock().await;
-        let outgoing = wing.get_mut(&id).expect("Key not found");
+        //This will cause the thread to crash, nees to be fixed so that we keep this thread alive
+        let outgoing = wing.get_mut(&id).expect("unable to find coneection key");
+        // .unwrap_or_else( |error| {
+        //     error!("Unable to find connection key: {:?}", error);
+        //     return
+        // });
         outgoing.try_write(&response_message).unwrap_or_else(|error| {
             error!("Unable to write to tcp stream: {:?}", error);
             0

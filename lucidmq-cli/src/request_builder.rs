@@ -63,7 +63,7 @@ fn new_topic_request_delete(topic_name: &str) -> Vec<u8> {
     framed_message
 }
 
-pub fn new_produce_request(topic_name: &str) -> Vec<u8> {
+pub fn new_produce_request(topic_name: &str, value: &[u8]) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
     let mut request_message = Builder::new_default();
@@ -76,7 +76,7 @@ pub fn new_produce_request(topic_name: &str) -> Vec<u8> {
         {
             let mut message_thing = messages.reborrow().get(0);
             message_thing.set_key("key".as_bytes());
-            message_thing.set_value("value".as_bytes());
+            message_thing.set_value(value);
             message_thing.set_timestamp(1);
         }
     }

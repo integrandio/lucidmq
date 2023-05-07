@@ -125,7 +125,6 @@ pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Ve
             ).unwrap();
             let reader = message_reader.get_root::<message::Reader>().unwrap();
             let thing = u32::try_from(i).unwrap();
-            info!("CREATING LIST ind {} {:?}", thing, reader.get_key().unwrap());
             {
                 messages.reborrow().set_with_caveats(thing, reader).unwrap();
             }

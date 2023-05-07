@@ -1,3 +1,7 @@
+/*
+This is a quic implementation of the lucidmq server.
+For now it will not be supported until tcp has been implemented. May be interesting to come and integrate.
+ */
 use log::{info, error, warn};
 use quinn::{Endpoint, ServerConfig, SendStream};
 use tokio::sync::Mutex;

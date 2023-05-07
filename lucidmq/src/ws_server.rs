@@ -1,6 +1,6 @@
 /*
 This is a web socket implementation of the lucidmq server.
-For now it will not be supported until quic has been implemented. May be interesting to come and integrate.
+For now it will not be supported until tcp has been implemented. May be interesting to come and integrate.
  */
 use std::{collections::HashMap, io::Error as IoError, net::SocketAddr, str::FromStr, sync::Arc};
 

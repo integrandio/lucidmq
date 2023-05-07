@@ -20,15 +20,10 @@ struct TopicRequest {
     describe @1 :Void;
     create @2 :Void;
     delete @3 :Void;
+    #all @4 :Void;
   }
 }
 
-
-# describe :group {
-# maxSegmentBytes :UInt64;
-#maxRetentionBytes:UInt64;
-#
-#}
 struct TopicResponse {
   topicName @0 :Text;
   success @1 :Bool;
@@ -40,6 +35,7 @@ struct TopicResponse {
     }
     create @5 :Void;
     delete @6 :Void;
+    #all @7 :List(Text);
   }
 }
 

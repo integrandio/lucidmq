@@ -7,7 +7,6 @@ use std::io::prelude::*;
 use std::net::{Shutdown, TcpStream};
 
 pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec<u8>>) -> Result<(), Box<dyn Error>> {
-
     let stream = TcpStream::connect(server_addr)?;
     debug!("connected: addr={}", stream.peer_addr().unwrap());
     
