@@ -2,41 +2,40 @@
 
 This subdirectory contains the library code for LucidMQ. LucidMQ is a library that implements event streaming directly into your application in a brokerless fashion. There is no external processes running, just import LucidMQ and start passing message though to your different applications that are also using LucidMQ.
 
-## Basic Useage
+## Running the Server Instance
 
-There are 4 main components that LucidMQ exposes:
-
-- LucidMQ: Handles all the metadata of the topics and initialization of consumers and producers.
-
-- Producer: Given a topic, the producer will write persistent messages to that topic.
-
-- Consumer: Given a topic, the consumer will read messages from that topic. It will know it's last read offset which is persisted, by using the consumergroup. ALl consumer groups start at the oldest offset.
-
-- Message: Similar to kafka all messages utilize a key, value and timestamp format.
-
-```rust
-use lucidmq::{LucidMQ, Message};
-
-// Create our lucidmq instance
-let mut lucidmq = LucidMQ::new("base_directory".to_string(), 1000, 5000);
-
-// Let's produce message to our message queue
-let mut producer = lucidmq.new_producer("topic1".to_string());
-// Create a message that you want to send.
-// Every message has a key, value and timestamp.
-let key = format!("key{}", 1);
-let value = format!("value{}", 1);
-let message = Message::new(key.as_bytes(), value.as_bytes(), None); 
-producer.produce_message(message);
-
-// Let's create a consumer to consumer our messages
-let mut consumer = lucidmq.new_consumer("topic1".to_string());
-// Get all the messages for that polling period
-let records = consumer.poll(1000);
-// Print out all of the messages recieved.
-for record in records {
-    println!("{}", str::from_utf8(&record.key).unwrap());
-    println!("{}", str::from_utf8(&record.value).unwrap());
-    println!("{}", record.timestamp);
-}
 ```
+cargo run
+```
+
+> Interested in contributing to LucidMQ? Get familiar with how it works and the terminology.
+
+## How Does LucidMQ work?
+
+LucidMQ relies on 2 main processes the broker and the server. They comunicate via message passing channels that allow for asyncronous processing. 
+
+### Terminology
+
+#### Broker
+
+Th broker acts as the main logic behind the LucidMQ service. It is responsible for metadata about topics, producers, consumers and how to persist all of this information.
+
+#### Server
+
+The server is what allows for incoming connections(via tcp) to establish producers and consumers with outside clients. The protocol format is in capnproto and allows the messages to be easily passed to the broker with zero copy overhead.
+
+#### Topic
+
+A topic is an object that maps a commitlog to specific producers and consumers. Basic metadata about producers, consumers and consumer groups are also stored in topics.
+
+#### Producer
+
+A producer is a representation of a client who submits messages to a single topic.
+
+#### Consumer
+
+A consumer is a representation of a client who listens/injests messages from a single topic.
+
+#### Consumer Group
+
+A consumer group is a construct that allows for multiple consumers to listen to a single topic. Each consumer group has it's own distinct last read offset to allow for different consumer groups to process messages at different points of the offset.

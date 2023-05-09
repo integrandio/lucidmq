@@ -168,11 +168,13 @@ fn stdin_processor(stdin_tx: UnboundedSender<Vec<u8>>, topic_name: &str) -> io::
         if buffer.len() == 0 {
             continue;
         }
+        // Can these requests be batched?
         let msg = request_builder::new_produce_request(topic_name, buffer.as_bytes());
         stdin_tx.send(msg).expect("Unable to send message");
     }
+    //stdin_tx.send("0".as_bytes().to_vec()).expect("Unable to send message");
     // How do we gracefully close the connection??
-    Ok(())
+    //Ok(())
 }
 
 

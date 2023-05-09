@@ -22,6 +22,24 @@
 
 LucidMQ is a streaming platform that focuses on providing low configuration and operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. Spend less time worring about operating your streaming platform cluster and spend more time building your real time applications.
 
+## Getting Started
+
+### How to Run LucidMQ
+
+#### Locally via Rust and Cargo
+
+#### Requirements:
+1. Rust and Cargo Installed
+- https://www.rust-lang.org/tools/install
+- https://doc.rust-lang.org/book/ch01-01-installation.html
+
+2. Capnproto Installed
+- https://capnproto.org/install.html
+
+See the [README in LucidMQ Directory](/lucidmq/README.md) for starting up the LucidMQ Server.
+
+For a client to interact with your LucidMQ server instance, utilize the LucidMQ-CLI. Learn more at the [README](/lucidmq-cli/README.md) in that directory.
+
 ### Repo Structure
 
 The repo is made up of a base library written in Rust and other client libraries for easily interacting with the logs using other languages.

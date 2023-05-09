@@ -1,6 +1,6 @@
 use capnp::message::Builder;
 use capnp::serialize;
-
+use std::time::{SystemTime, UNIX_EPOCH};
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 
 pub fn new_topic_request(topic_name: &str, topic_request_type: &str) -> Vec<u8> {
@@ -77,7 +77,10 @@ pub fn new_produce_request(topic_name: &str, value: &[u8]) -> Vec<u8> {
             let mut message_thing = messages.reborrow().get(0);
             message_thing.set_key("key".as_bytes());
             message_thing.set_value(value);
-            message_thing.set_timestamp(1);
+            let current_ts = SystemTime::now()
+                .duration_since(UNIX_EPOCH).unwrap()
+                .as_millis() as u64;
+            message_thing.set_timestamp(current_ts);
         }
     }
 

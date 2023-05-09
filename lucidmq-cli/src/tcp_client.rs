@@ -9,10 +9,9 @@ use std::net::{Shutdown, TcpStream};
 pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec<u8>>) -> Result<(), Box<dyn Error>> {
     let stream = TcpStream::connect(server_addr)?;
     debug!("connected: addr={}", stream.peer_addr().unwrap());
-    
     // Reading from TCP stream is done in a thread
     tokio::spawn(read_from_stream(stream.try_clone().unwrap()));
-    // Main thread handles writing to the QUIC stream
+    // Main thread handles writing to the tcp stream
     write_to_stream(stream.try_clone().unwrap(), stdin_rx).await;
     info!("Cleaning up connection");
     stream.shutdown(Shutdown::Both).unwrap();
@@ -21,15 +20,16 @@ pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec
     Ok(())
 }
 
-async fn write_to_stream(mut send: TcpStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
+async fn write_to_stream(mut stream: TcpStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
     loop {
         let message = rx.recv().await.expect("Unable to recieve message");
         if message.len() == 1 {
             break;
         }
         debug!("{:?}", message);
-        send.write(&message).expect("Unable to send message");
+        stream.write(&message).expect("Unable to send message");
     }
+    stream.shutdown(Shutdown::Both).expect("unable to shutdown stream");
 }
 
 async fn read_from_stream(mut recv: TcpStream) {

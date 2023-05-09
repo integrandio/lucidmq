@@ -1,25 +1,27 @@
-# LucidMQ
+# LucidMQ-CLI
 
 This subdirectory CLI code to interact with lucidmq instances via a terminal.
 
 ## To Run the CLI
 
-To run the CLI binary using cargo as normal
+To run the CLI binary using cargo as normal.
 
 `cargo run connect 127.0.0.1 5000`
 
+Creating a connection will allow you to interact with your LucidMQ instance and run all the possible commands.
 
-## To Run the Produce Ccript
+## To Run the Produce Script
 
 To run the CLI binary using cargo as normal
 
-`cargo run producer 127.0.0.1 5000 topic1`
+`cargo run producer 127.0.0.1 5000 {topic_name}`
 
+This script is useful for getting started with LucidMQ from a unix environment.
 
-## Tailing logs to the cli
+### Tailing logs to the cli
 
-For the linux wizzards who need to get logs piped in
+For the linux wizzards who need to get logs piped in.
 
 ```
-tail -f myfile.txt | cargo run producer 127.0.0.1 5000 topic1
+tail -f myfile.txt | cargo run producer 127.0.0.1 5000 {topic_name}
 ```
