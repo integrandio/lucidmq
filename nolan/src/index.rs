@@ -27,21 +27,25 @@ impl Index {
     /**
      * Create a new index
      */
-    pub fn new(index_path: String) -> Index {
-        let message = format!("Unable to create and open file {}", index_path);
+    pub fn new(index_path: String) -> Result<Index, IndexError> {
+        let error_message = format!("Unable to create and open file {}", index_path);
         let file = OpenOptions::new()
             .create(true)
             .read(true)
             .write(true)
             .append(true)
             .open(index_path.clone())
-            .expect(&message); // TODO: Error handle this
+            .map_err(|e| {
+                error!("{}", e);
+                IndexError::new(&error_message)
+            })
+            .expect(&error_message); // TODO: Error handle this
         let empty_entry_vec = Vec::new();
-        Index {
+        Ok(Index {
             file_name: index_path,
             entries: empty_entry_vec,
             index_file: file,
-        }
+        })
     }
 
     // /**
@@ -174,11 +178,25 @@ impl Index {
 
 #[cfg(test)]
 mod index_tests {
+    use std::str;
     use std::path::Path;
     use tempdir::TempDir;
+    use crate::virtual_segment::VirtualSegment;
     
     use rand::{distributions::Alphanumeric, Rng}; // 0.8
     use crate::index::Index;
+
+    fn create_index_file(test_dir_path: &str, message_to_write: &[u8]) -> String{
+        let mut vs = VirtualSegment::new(test_dir_path, 100, 0);
+        vs
+            .write(message_to_write)
+            .expect("unable to write data to virtual segment");
+        vs.flush();
+        let file_name = vs.full_log_path.clone();
+        let thing = str::strip_suffix(&file_name, ".log").expect("unable to strip");
+        let index_file_name = format!("{}{}", thing, ".index");
+        return index_file_name
+    }
 
     #[test]
     fn test_new_index() {
@@ -193,24 +211,44 @@ mod index_tests {
             .map(char::from)
             .collect();
         let index_file_path = test_dir_path.to_string() + &s + ".index";
-        let index = Index::new(index_file_path);    
+        let index = Index::new(index_file_path).expect("Error creating index");  
         //Check if the index file exists
         assert!(Path::new(&index.file_name).exists());
     }
 
+    #[test]
+    fn test_load_index() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let index_file_name = create_index_file(test_dir_path, "hello".as_bytes());
+        println!("{}", index_file_name);
 
-    // #[test]
-    // fn test_add_entry() {
-    //     let my_setup = Setup::default();
-    //     //let index_file_path = TEST_DIRECTORY.to_string() + "/test.index";
-    //     let mut test_index = Index::new(my_setup.index_file.clone());
+        let mut index = Index::new(index_file_name).expect("Error creating index");
+        index.load_index().expect("unable to load index");
+        println!("{}", index.entries.len());
+        assert!(index.entries.len() == 1);
+    }
 
-    //     let start_position = 0;
-    //     let total_bytes = 10;
-    //     test_index.add_entry(start_position, total_bytes).expect("Unable to add entry");
+    #[test]
+    fn return_entry_details_by_offset() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let message = "hello";
+        let index_file_name = create_index_file(test_dir_path, message.as_bytes());
+        println!("{}", index_file_name);
 
-    //     let retrieved_entry = test_index.entries.get(0).expect("Got entry");
-    //     assert_eq!(start_position, retrieved_entry.start);
-    //     assert_eq!(total_bytes, retrieved_entry.total);
-    // }
+        let mut index = Index::new(index_file_name).expect("Error creating index");
+        index.load_index().expect("unable to load index");
+
+        let (start, total) = index.return_entry_details_by_offset(0).expect("Unable to get entry details");
+        assert!(start == 0);
+        assert!(total == message.len());
+    }
+
 }

@@ -120,7 +120,9 @@ impl Segment {
             segment_offset,
             INDEX_SUFFIX,
         );
-        let mut loaded_index = Index::new(index_file_name);
+        let mut loaded_index = Index::new(index_file_name).map_err(|e| {
+            SegmentError::new(&e.to_string())
+        })?;
 
         let mut total_entries = loaded_index.load_index().map_err(|e| {
             error!("{}", e);
