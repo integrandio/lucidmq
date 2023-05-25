@@ -20,7 +20,19 @@
 
 ## What is LucidMQ
 
-LucidMQ is a streaming platform that focuses on providing low configuration and operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. Spend less time worring about operating your streaming platform cluster and spend more time building your real time applications.
+LucidMQ is a streaming platform that focuses on providing low configuration and low operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. Spend less time worring about operating your streaming platform cluster and spend more time building your real time applications.
+
+### Repo Structure
+
+The repository is a monorepo with eeverything LucidMQ related. In the future some of these librarys may be split into their own repository. LucidMQ, LucidMQ-cli and it's storage system nolan are all written in Rust. Lucidmq-py provides a client library for Python as well as integration tests for LucidMQ.
+
+    ├── nolan            # The base library containing code for the commitlog
+    ├── lucidmq          # Lucidmq broker and server
+    ├── lucidmq-cli      # CLI client for interacting with lucidmq
+    ├── lucidmq-py       # Python client library and integration tests
+    └── protocol         # CapNProto Definitions for the protocol use for client-server messaging
+
+---
 
 ## Getting Started
 
@@ -40,35 +52,17 @@ See the [README in LucidMQ Directory](/lucidmq/README.md) for starting up the Lu
 
 For a client to interact with your LucidMQ server instance, utilize the LucidMQ-CLI. Learn more at the [README](/lucidmq-cli/README.md) in that directory.
 
-### Repo Structure
-
-The repo is made up of a base library written in Rust and other client libraries for easily interacting with the logs using other languages.
-
-    ├── nolan            # The base library containing code for the commitlog
-    ├── lucidmq          # Lucidmq broker and server
-    ├── lucidmq-cli      # CLI client for interacting with lucidmq
-    └── protocol         # Protocol for the server messaging
-
----
 
 ## Why do you need LucidMQ?
 
-### Need for Speed
+LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundation libraries like Cap N Proto and Rust to eliminate memory bugs. Also, this project aims to have world class documentation to spread knowledge about event streaming based systems.
 
-LucidMQ is built on top of the QUIC Protocol which allows for connections to be open up very quickly.
+## How to Help?
 
-### Advanced Protocol
+- Start running instances of LucidMQ and report bugs
+- Issues will be added and tagged for anyone looking to get their hands dirty
 
-The LucidMQ protocol stands on the shoulder of giants and takes advantage of Cap n' Protos zero copy encoding format to enable blazing fast comunications.
-
-
-### Quickly Prototyping or Learning Event Streaming
-
-There are many benefits to using event streaming and architectures that use such paradigms. One issue that LucidMQ aims to solve vs other server-client solutions, is quick prototyping and creating environments to learn. Standing up Kafka and RabbitMQ for such small purposes can seem cumbersome and intimidating to some. With an embedded approach to the stream, one can quickly build out the PoC or learn the fundamentals before porting the solution over to a distributed model when the time calls for it.
-
-### Developing Distributed Systems
-
-Persisting state to a distributed system. There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
+Help realize the future of a low frustration ops experience of a message broker.
 
 ---
 

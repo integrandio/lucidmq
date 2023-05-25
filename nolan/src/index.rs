@@ -181,10 +181,10 @@ mod index_tests {
     use std::str;
     use std::path::Path;
     use tempdir::TempDir;
-    use crate::virtual_segment::VirtualSegment;
-    
     use rand::{distributions::Alphanumeric, Rng}; // 0.8
     use crate::index::Index;
+    use crate::utils;
+    use crate::virtual_segment::VirtualSegment;
 
     fn create_index_file(test_dir_path: &str, message_to_write: &[u8]) -> String{
         let mut vs = VirtualSegment::new(test_dir_path, 100, 0);
@@ -193,8 +193,8 @@ mod index_tests {
             .expect("unable to write data to virtual segment");
         vs.flush();
         let file_name = vs.full_log_path.clone();
-        let thing = str::strip_suffix(&file_name, ".log").expect("unable to strip");
-        let index_file_name = format!("{}{}", thing, ".index");
+        let thing = str::strip_suffix(&file_name, utils::LOG_SUFFIX).expect("unable to strip");
+        let index_file_name = format!("{}{}", thing, utils::INDEX_SUFFIX);
         return index_file_name
     }
 
@@ -210,7 +210,7 @@ mod index_tests {
             .take(7)
             .map(char::from)
             .collect();
-        let index_file_path = test_dir_path.to_string() + &s + ".index";
+        let index_file_path = format!("{}{}{}", test_dir_path.to_string(), &s, utils::INDEX_SUFFIX);
         let index = Index::new(index_file_path).expect("Error creating index");  
         //Check if the index file exists
         assert!(Path::new(&index.file_name).exists());
@@ -224,11 +224,9 @@ mod index_tests {
             .to_str()
             .expect("Unable to convert path to string");
         let index_file_name = create_index_file(test_dir_path, "hello".as_bytes());
-        println!("{}", index_file_name);
 
         let mut index = Index::new(index_file_name).expect("Error creating index");
         index.load_index().expect("unable to load index");
-        println!("{}", index.entries.len());
         assert!(index.entries.len() == 1);
     }
 
@@ -241,7 +239,6 @@ mod index_tests {
             .expect("Unable to convert path to string");
         let message = "hello";
         let index_file_name = create_index_file(test_dir_path, message.as_bytes());
-        println!("{}", index_file_name);
 
         let mut index = Index::new(index_file_name).expect("Error creating index");
         index.load_index().expect("unable to load index");

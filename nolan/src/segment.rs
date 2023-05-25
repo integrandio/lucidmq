@@ -4,10 +4,7 @@ use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::prelude::*;
 use std::io::SeekFrom;
-//use std::io::Write;
-use std::path::Path;
-use std::str;
-
+use crate::utils;
 use crate::index::Index;
 use crate::nolan_errors::SegmentError;
 
@@ -16,13 +13,13 @@ use crate::nolan_errors::SegmentError;
 /// user supplied data is stored. The index is used to quickly retrieve information
 /// that is persisted.
 pub struct Segment {
-    /// The file name used by both the log and index file
+    /// The file path to the log file
     pub file_name: String,
     /// Current position of the cursor within the log file
     pub position: u32,
-    /// Max size of the segment file 
+    // Max size of the segment file 
     //max_bytes: u64,
-    /// Starting offset within the segment
+    /// The Starting offset within the segment
     pub starting_offset: u16,
     /// Next offset within the segment
     pub next_offset: u16,
@@ -34,8 +31,6 @@ pub struct Segment {
     index: Index,
 }
 
-const LOG_SUFFIX: &str = ".log";
-const INDEX_SUFFIX: &str = ".index";
 
 impl Segment {
     // /**
@@ -88,10 +83,10 @@ impl Segment {
             error!("{}", e);
             SegmentError::new("unable to parse base string into u16")
         })?;
-        let log_file_name = Self::create_segment_file_name(
-            base_directory.clone(),
+        let log_file_name = utils::create_segment_file_name(
+            &base_directory,
             segment_offset,
-            LOG_SUFFIX,
+            utils::LOG_SUFFIX,
         );
 
         let file = OpenOptions::new()
@@ -115,10 +110,10 @@ impl Segment {
             SegmentError::new("unable to convert from u64 to u32")
         })?;
 
-        let index_file_name = Self::create_segment_file_name(
-            base_directory.clone(),
+        let index_file_name = utils::create_segment_file_name(
+            &base_directory,
             segment_offset,
-            INDEX_SUFFIX,
+            utils::INDEX_SUFFIX,
         );
         let mut loaded_index = Index::new(index_file_name).map_err(|e| {
             SegmentError::new(&e.to_string())
@@ -245,33 +240,75 @@ impl Segment {
         Ok(true)
     }
 
-    /**
-     * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
-     */
-    pub fn create_segment_file_name(
-        directory: String,
-        starting_offset: u16,
-        suffix: &str,
-    ) -> String {
-        let file_name = format!("{:0>5}{}", starting_offset, suffix);
-        let new_file = Path::new(&directory).join(file_name);
-        //TODO: Error handle this
-        String::from(new_file.to_str().expect("unable to convert path to string"))
-    }
+
 }
 
-// #[cfg(test)]
-// mod segment_tests {
-//     use std::path::Path;
+#[cfg(test)]
+mod segment_tests {
+    use std::path::Path;
+    use tempdir::TempDir;
+    use crate::virtual_segment::VirtualSegment;
+    use crate::utils;
+    use crate::segment::Segment;
 
-//     use crate::segment::Segment;
+    fn create_segment_file(test_dir_path: &str, message_to_write: &[u8]) -> String{
+        let mut vs = VirtualSegment::new(test_dir_path, 100, 0);
+        vs
+            .write(message_to_write)
+            .expect("unable to write data to virtual segment");
+        vs.flush();
+        let file_name = Path::new(&vs.full_log_path).file_name().unwrap().to_str().expect("Unbale to conver os string to string");
+        let segment_base = str::strip_suffix(&file_name, utils::LOG_SUFFIX).expect("unable to strip");
+        return segment_base.to_string();
+    }
 
-//     #[test]
-//     fn test_new_segment() {
-//         let test_dir_path = String::from("test");
-//         Segment::new(test_dir_path.clone(), 100, 1000);
-//         //Check if the directory exists
-//         assert!(Path::new(&test_dir_path).is_dir());
-//         //Check if the segment file and index file exists
-//     }
-// }
+    #[test]
+    fn test_load_segment() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let segment_base = create_segment_file(test_dir_path, "hello".as_bytes());
+        let segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+        //Check if the directory exists
+        assert!(Path::new(&segment.file_name).exists());
+    }
+
+
+    #[test]
+    fn test_read_at() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let message = "hello".as_bytes();
+        let segment_base = create_segment_file(test_dir_path, message);
+        let mut segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+
+        let result = segment.read_at(0).expect("Unable to read at offset");
+
+        assert!(result.iter().eq(message.iter()));
+    }
+
+    #[test]
+    fn test_delete() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let message = "hello".as_bytes();
+        let segment_base = create_segment_file(test_dir_path, message);
+        let segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+
+        let segment_path = segment.file_name.clone();
+        let index_path = segment.index.file_name.clone();
+
+        let delete_result = segment.delete().expect("Unable to delete segment");
+        assert!(delete_result.eq(&true));
+        assert!(!Path::new(&segment_path).exists());
+        assert!(!Path::new(&index_path).exists());
+    }
+}

@@ -1,3 +1,4 @@
+mod utils;
 mod cleaner;
 mod commitlog;
 mod index;

@@ -1,9 +1,8 @@
 use std::{
     fs::OpenOptions,
-    io::{Cursor, Read, Seek, SeekFrom, Write},
-    path::Path,
+    io::{Cursor, Read, Seek, SeekFrom, Write}
 };
-
+use crate::utils;
 use crate::{virtual_index::VirtualIndex, nolan_errors::SegmentError};
 use log::{error, info};
 
@@ -17,17 +16,12 @@ pub struct VirtualSegment {
     pub full_log_path: String,
 }
 
-const LOG_SUFFIX: &str = ".log";
-const INDEX_SUFFIX: &str = ".index";
-
 impl VirtualSegment {
     /// Create a virtual segment with the provided starting offset
     pub fn new(base_directory: &str, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
         info!("Creating a new virtual segment");
-        let log_file_path =
-            Self::create_segment_file_name(&base_directory, offset, LOG_SUFFIX);
-        let index_file_name =
-            Self::create_segment_file_name(&base_directory, offset, INDEX_SUFFIX);
+        let log_file_path = utils::create_segment_file_name(&base_directory, offset, utils::LOG_SUFFIX);
+        let index_file_name = utils::create_segment_file_name(&base_directory, offset, utils::INDEX_SUFFIX);
         let new_virtual_index = VirtualIndex::new(index_file_name);
         VirtualSegment {
             contents: Cursor::new(Vec::new()),
@@ -52,7 +46,7 @@ impl VirtualSegment {
         //     SegmentError::new(&segment_error_str)
         // })?;
         let log_file_name =
-            Self::create_segment_file_name(base_directory, segment_offset, LOG_SUFFIX);
+            utils::create_segment_file_name(base_directory, segment_offset, utils::LOG_SUFFIX);
 
         let mut log_file = OpenOptions::new()
             .create(false)
@@ -77,7 +71,7 @@ impl VirtualSegment {
         })?;
 
         let index_file_name =
-            Self::create_segment_file_name(base_directory.clone(), segment_offset, INDEX_SUFFIX);
+            utils::create_segment_file_name(base_directory.clone(), segment_offset, utils::INDEX_SUFFIX);
         let mut loaded_index = VirtualIndex::new(index_file_name);
 
         let mut total_entries = loaded_index.load_index().map_err(|e| {
@@ -179,19 +173,6 @@ impl VirtualSegment {
             .expect("Unable to flush contents to file");
     }
 
-    /**
-     * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
-     */
-    pub fn create_segment_file_name(
-        directory: &str,
-        starting_offset: u16,
-        suffix: &str,
-    ) -> String {
-        let file_name = format!("{:0>5}{}", starting_offset, suffix);
-        let new_file = Path::new(&directory).join(file_name);
-        //TODO: Error handle this
-        String::from(new_file.to_str().expect("unable to convert path to string"))
-    }
 }
 
 #[cfg(test)]

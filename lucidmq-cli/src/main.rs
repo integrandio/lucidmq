@@ -34,6 +34,13 @@ fn base_cli() -> Command<'static> {
                 .arg(arg!(<TOPIC_NAME> "The topice where you want to produce messages to"))
                 .arg_required_else_help(true),
         )
+        .subcommand(Command::new("consumer")
+            .about("Create a consumer instance that allows you pipe out data.")
+            .arg(arg!(<ADDRESS> "The address where your LucidMQ is"))
+            .arg(arg!(<PORT> "The port where your LucidMQ is"))
+            .arg(arg!(<TOPIC_NAME> "The topice where you want to consume from"))
+            .arg(arg!(<CONSUMER_GROUP> "The consumer group you want to use"))
+        )
 }
 
 fn respond(line: &str) -> Result<Vec<u8>, String> {
@@ -177,6 +184,14 @@ fn stdin_processor(stdin_tx: UnboundedSender<Vec<u8>>, topic_name: &str) -> io::
     //Ok(())
 }
 
+fn stdout_processor(stdin_tx: UnboundedSender<Vec<u8>>, topic_name: &str, consumer_group: &str) -> io::Result<()> {
+    // Can these requests be batched?
+    let msg = request_builder::new_consume_message(topic_name, consumer_group);
+    stdin_tx.send(msg).expect("Unable to send message");
+    // This exits before it actaully recieves the messagee
+    //thread::sleep(time::Duration::from_millis(5000));
+    Ok(())
+}
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
@@ -216,6 +231,26 @@ async fn main() -> Result<(), String> {
             info!("Exiting...");
             return Ok(());
         },
+        // Probably need to add another channel so we can block until we get a message back. This would simplify reading 
+        // messages that are just randomly logged out. We need asyc behavior to run the server, however we need a synchronous model to be able
+        // to reason about messages coming back and forth from the client. Serious refactoring needed.
+        Some(("consumer", sub_matches)) => {
+            let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
+            let port = sub_matches.get_one::<String>("PORT").expect("required");
+            let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
+            let consumer_group = sub_matches.get_one::<String>("CONSUMER_GROUP").expect("required");
+
+            let connection_string: SocketAddr = format!("{}:{}", address, port).parse().unwrap();
+            info!("Connected to {}", connection_string.to_string());
+            tokio::spawn(async move {
+                let res = tcp_client::run_client(connection_string, stdin_rx).await;
+                res.expect("Server crashed unexpectedly")
+            });
+
+            stdout_processor(stdin_tx, topic_name, consumer_group).expect("Unable to process consumer message");
+            info!("Exiting...");
+            return Ok(());
+        }
         _ => unreachable!(), // If all subcommands are defined above, anything else is unreachabe!()
     } 
 

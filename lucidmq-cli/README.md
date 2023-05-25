@@ -1,6 +1,6 @@
 # LucidMQ-CLI
 
-This subdirectory CLI code to interact with lucidmq instances via a terminal.
+This subdirectory CLI code to interact with LucidMQ instances via a CLI and begin writing programs that interact with Lucidmq.
 
 ## To Run the CLI
 
@@ -20,7 +20,7 @@ This script is useful for getting started with LucidMQ from a unix environment.
 
 ### Tailing logs to the cli
 
-For the linux wizzards who need to get logs piped in.
+For the linux wizards who need to get logs piped in LucidMQ
 
 ```
 tail -f myfile.txt | cargo run producer 127.0.0.1 5000 {topic_name}

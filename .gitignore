@@ -6,5 +6,4 @@
 # Generated cap n proto does not need to bee checked in
 **/*_capnp.rs
 
-# Remove to add lucidmq python client library when ready
-lucidmq-py
+docker-compose.yml

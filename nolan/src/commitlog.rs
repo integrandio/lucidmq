@@ -387,7 +387,6 @@ mod commitlog_tests {
 
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
-            println!("{string_message}");
             let test_data = string_message.as_bytes();
             let retrived_message = cl.read(i).expect("Unable to retrieve message");
             assert_eq!(test_data, &*retrived_message);
