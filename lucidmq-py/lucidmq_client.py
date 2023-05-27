@@ -25,12 +25,13 @@ class Producer(LucidmqClient):
     def __init__(self, host, port):
         super().__init__(host, port)
 
-    def send(self, topic_name: str, key: bytes, value: bytes):
+    def produce(self, topic_name: str, key: bytes, value: bytes):
         msg = cap_helper.produce_request(topic_name, key, value)
         self.send_message_bytes(msg)
         data = self.recieve_response()
         produce_response_obj = cap_helper.response_parser(data)
         print(produce_response_obj)
+        return produce_response_obj.to_dict()
     
     def close(self):
         self.close_client()
@@ -45,7 +46,7 @@ class Consumer(LucidmqClient):
         self.send_message_bytes(msg)
         data = self.recieve_response()
         cosumer_response_object = cap_helper.response_parser(data)
-        print(cosumer_response_object)
+        return cosumer_response_object.to_dict()
     
     def close(self):
         self.close_client()

@@ -2,7 +2,7 @@
 from lucidmq_client import Producer, Consumer, TopicManager
 
 HOST = "127.0.0.1"  # The server's hostname or IP address
-PORT = 5000  # The port used by the server
+PORT = 6969  # The port used by the server
 
 def main():
     topic_name = "testTopic"

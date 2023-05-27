@@ -31,7 +31,7 @@ pub struct LucidTcpServer {
 
 impl LucidTcpServer {
     pub fn new(sender: SenderType, reciever: RecieverType) -> LucidTcpServer {
-        let addr = "127.0.0.1:5000".parse().unwrap();
+        let addr = "127.0.0.1:6969".parse().unwrap();
         LucidTcpServer { 
             peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,

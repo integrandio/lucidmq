@@ -12,10 +12,16 @@ To prevent commitlog curruption, only a few commitlog methods are exposed to be 
 A directory containing all of the segments that make up the log. It is an append only data structure that supports random reads.
 
 ### Segment
-A sement is made up of 2 files that contain all of the data stored in our commitlog. A log file and and index file. The log file contains the actual data stored in the 'segment' while the index provides metadata about the offsets for fast lookups for each piece of data.
+A sement is made up of 2 files that contain all of the data stored in our commitlog. These two files share the same name(except for the file extension) so nolan knows that they're the same segment.
+
+### Log
+The log file is the file that actually persists the commitlog input to disk.
+
+### Index
+The index is a a file that contains metadata about the offsets for fast lookups for each piece of data. This allows for data from the log file to have to be loaded into memory. Instead, entries from the index are loaded from the index files and allow for fast lookups.
 
 ### Cleaner
-The cleaner is a mechanism for cleaning up data that is no longer required. This requirement is based on the defined policy passed into the configuration.
+The cleaner is a mechanism for cleaning up data that is no longer required. This requirement is based on the defined policy passed in as a configuration.
 
 ## Basic Usage
 
