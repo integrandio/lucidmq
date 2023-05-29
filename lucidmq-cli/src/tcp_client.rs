@@ -1,16 +1,16 @@
 use log::{debug, error, info};
-use tokio::sync::mpsc::UnboundedReceiver;
+use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 use std::{error::Error, net::SocketAddr};
 use crate::cap_n_proto_helper;
 
 use std::io::prelude::*;
 use std::net::{Shutdown, TcpStream};
 
-pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec<u8>>) -> Result<(), Box<dyn Error>> {
+pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec<u8>>, stdin_tx: UnboundedSender<String>) -> Result<(), Box<dyn Error>> {
     let stream = TcpStream::connect(server_addr)?;
     debug!("connected: addr={}", stream.peer_addr().unwrap());
     // Reading from TCP stream is done in a thread
-    tokio::spawn(read_from_stream(stream.try_clone().unwrap()));
+    tokio::spawn(read_from_stream(stream.try_clone().unwrap(), stdin_tx));
     // Main thread handles writing to the tcp stream
     write_to_stream(stream.try_clone().unwrap(), stdin_rx).await;
     info!("Cleaning up connection");
@@ -20,7 +20,7 @@ pub async fn run_client(server_addr: SocketAddr, stdin_rx: UnboundedReceiver<Vec
     Ok(())
 }
 
-async fn write_to_stream(mut stream: TcpStream, mut rx: tokio::sync::mpsc::UnboundedReceiver<Vec<u8>>) {
+async fn write_to_stream(mut stream: TcpStream, mut rx: UnboundedReceiver<Vec<u8>>) {
     loop {
         let message = rx.recv().await.expect("Unable to recieve message");
         if message.len() == 1 {
@@ -32,7 +32,7 @@ async fn write_to_stream(mut stream: TcpStream, mut rx: tokio::sync::mpsc::Unbou
     stream.shutdown(Shutdown::Both).expect("unable to shutdown stream");
 }
 
-async fn read_from_stream(mut recv: TcpStream) {
+async fn read_from_stream(mut recv: TcpStream, stdin_tx: UnboundedSender<String>) {
     // This buffer is used to get the size of the actual message
     let mut buf = [0u8; 2];
     loop {
@@ -58,6 +58,7 @@ async fn read_from_stream(mut recv: TcpStream) {
             },
         };
         debug!("Second Bytes recieved {:?} size {}", message_buff, message_bytes_read);
-        cap_n_proto_helper::parse_response(message_buff.to_vec());
+        let response = cap_n_proto_helper::parse_response(message_buff.to_vec());
+        stdin_tx.send(response).expect("Unable to send message");
     }
 }
