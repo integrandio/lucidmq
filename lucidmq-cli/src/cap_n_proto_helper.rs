@@ -16,10 +16,10 @@ pub fn parse_response(data: Vec<u8>) -> String {
             match topic_response.which() {
                 Ok(crate::lucid_schema_capnp::topic_response::Which::Create(_create)) => {
                     let mut s = String::new();
-                    s.push_str("Topic Create Response ------------\n");
                     let topic_name = format!("Topic Name: {}\n", topic_response.get_topic_name().unwrap());
-                    s.push_str(&topic_name);
                     let status = format!("Status: {}\n", topic_response.get_success());
+                    s.push_str("Topic Create Response ------------\n");
+                    s.push_str(&topic_name);
                     s.push_str(&status);
                     return s;
                 },
@@ -84,13 +84,13 @@ pub fn parse_response(data: Vec<u8>) -> String {
             return s;
         },
         Ok(message_envelope::TopicRequest(_envelope_topic_request)) => {
-            return "Invalid request type".to_string();
+            return "Invalid request type\n".to_string();
         },
         Ok(message_envelope::ConsumeRequest(_envelope_produce_request)) => {
-            return "Invalid request type".to_string();
+            return "Invalid request type\n".to_string();
         },
         Ok(message_envelope::ProduceRequest(_envelope_consume_request)) => {
-            return "Invalid request type".to_string();
+            return "Invalid request type\n".to_string();
         },
         Err(::capnp::NotInSchema(_)) => {
             return "Unable to parse cap n p message\n".to_string();

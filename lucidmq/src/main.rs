@@ -3,7 +3,7 @@ mod cap_n_proto_helper;
 mod consumer;
 pub mod lucid_schema_capnp;
 mod producer;
-//mod quic_server;
+mod lucidmq_errors;
 mod tcp_server;
 mod topic;
 mod types;

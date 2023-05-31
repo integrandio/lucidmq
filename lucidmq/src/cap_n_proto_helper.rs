@@ -25,7 +25,6 @@ pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> 
     return framed_message;
 }
 
-
 pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_retention: u64, max_segment: u64, consumer_groups: Vec<String>) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
@@ -40,7 +39,7 @@ pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_reten
         let mut describe = topic_response.init_describe();
         describe.set_max_retention_bytes(max_retention);
         describe.set_max_segment_bytes(max_segment);
-        //Builde our consumer group response
+        //Build our consumer group response
         let size = u32::try_from(consumer_groups.len()).unwrap();
         let mut cgs = describe.init_consumer_groups(size);
         for (i, consumer_group) in consumer_groups.iter().enumerate() {
@@ -198,25 +197,25 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
         Ok(message_envelope::TopicResponse(envelope_topic_response)) => {
             info!("{}", envelope_topic_response.unwrap().get_topic_name().unwrap());
             Command::Invalid { 
-                message: "id1".to_string()
+                message: "Topic Response is an invalid request".to_string()
             }
         },
         Ok(message_envelope::ConsumeResponse(envelope_produce_response)) => {
             info!("{}", envelope_produce_response.unwrap().get_topic_name().unwrap());
             Command::Invalid { 
-                message: "id1".to_string()
+                message: "Consume response is an invalid request".to_string()
             }
         },
         Ok(message_envelope::ProduceResponse(envelope_consume_response)) => {
             info!("{}", envelope_consume_response.unwrap().get_topic_name().unwrap());
             Command::Invalid { 
-                message: "id1".to_string()
+                message: "Porduce response is an invalid request".to_string()
             }
         },
         Err(::capnp::NotInSchema(_)) => {
             info!("Unable to parse cap n p message");
             Command::Invalid { 
-                message: "id1".to_string()
+                message: "Not in schema".to_string()
             }
         }
     }

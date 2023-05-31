@@ -32,7 +32,39 @@ pub enum Command{
 
 impl fmt::Debug for Command {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Command").finish()
+        match &*self {
+            Command::TopicRequest { conn_id, capmessage: _ } => {
+                f.debug_struct("Command")
+                .field("Command Type", &"TopicRequest")
+                .field("Connection ID", &conn_id)
+                .finish()
+            },
+            Command::ProduceRequest { conn_id, capmessage: _ } => {
+                f.debug_struct("Command")
+                .field("Command Type", &"ProduceRequest")
+                .field("Connection ID", &conn_id)
+                .finish()
+            },
+            Command::ConsumeRequest { conn_id, capmessage: _ } => {
+                f.debug_struct("Command")
+                .field("Command Type", &"ConsumeRequest")
+                .field("Connection ID", &conn_id)
+                .finish()
+            },
+            Command::Response { conn_id, capmessagedata: _ } => {
+                f.debug_struct("Command")
+                .field("Command Type", &"Response")
+                .field("Connection ID", &conn_id)
+                .finish()
+            },
+            Command::Invalid { message } => {
+                f.debug_struct("Command")
+                .field("Command Type", &"Invalid")
+                .field("Message", &message)
+                .finish()
+            },
+        }
+
     }
 }
 

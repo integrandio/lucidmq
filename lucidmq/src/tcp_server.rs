@@ -2,12 +2,10 @@ use log::{info, error};
 use std::io;
 use tokio::sync::Mutex;
 use std::{net::SocketAddr, sync::Arc, collections::HashMap};
-
 use rand::{thread_rng, Rng};
 use rand::distributions::Alphanumeric;
 
 use crate::cap_n_proto_helper::parse_request;
-
 use crate::types::Command;
 
 use tokio::{
@@ -31,6 +29,7 @@ pub struct LucidTcpServer {
 
 impl LucidTcpServer {
     pub fn new(sender: SenderType, reciever: RecieverType) -> LucidTcpServer {
+        // TODO: this should be passed in as configuration values 
         let addr = "127.0.0.1:6969".parse().unwrap();
         LucidTcpServer { 
             peer_map: PeerMap::new(Mutex::new(HashMap::new())),
@@ -117,14 +116,12 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
             }
         };
         let msg = parse_request(conn_id.clone(), message_buff.clone());
-        // info!("sending message: {:?}", msg);
         sender.send(msg).await.expect("Unble to send message");
     }
 }
 
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
-        // info!("Recieved message");
         let id;
         let response_message: Vec<u8>;
         match command {
@@ -137,17 +134,19 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
                 continue;
             }
         }
-        let mut wing = peermap.lock().await;
-        //This will cause the thread to crash, nees to be fixed so that we keep this thread alive
-        let outgoing = wing.get_mut(&id).expect("unable to find coneection key");
-        // .unwrap_or_else( |error| {
-        //     error!("Unable to find connection key: {:?}", error);
-        //     return
-        // });
-        outgoing.try_write(&response_message).unwrap_or_else(|error| {
-            error!("Unable to write to tcp stream: {:?}", error);
-            0
-        });
+        let wing = peermap.lock().await;
+
+        match wing.get(&id) {
+            Some(outgoing) => {
+                outgoing.try_write(&response_message).unwrap_or_else(|error| {
+                    error!("Unable to write to tcp stream: {:?}", error);
+                    0
+                });
+            }
+            None => {
+                error!("Unable to find connection key: {}", &id);
+            }
+        }
     }
 }
 
