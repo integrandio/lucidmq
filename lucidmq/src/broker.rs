@@ -18,6 +18,8 @@ use std::io::Write;
 use std::path::Path;
 use std::sync::{Arc, RwLock};
 
+use crate::lucidmq_errors::BrokerError;
+
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(from = "DeserBroker")]
 pub struct Broker {
@@ -41,16 +43,18 @@ impl From<DeserBroker> for Broker {
 }
 
 impl Broker {
-    pub fn new(directory: String) -> Broker {
+    pub fn new(directory: String) -> Result<Broker, BrokerError> {
         debug!("Creating new instance of lucidmq in {}", directory);
         //Try to load from file
         let lucidmq_file_path = Path::new(&directory).join("lucidmq.meta");
         let file_bytes = fs::read(lucidmq_file_path);
         match file_bytes {
             Ok(bytes) => {
-                let decoded_lucidmq: Broker =
-                    bincode::deserialize(&bytes).expect("Unable to deserialize message");
-                decoded_lucidmq
+                let decoded_lucidmq: Broker = bincode::deserialize(&bytes).map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to deserialize lucidmq.meta file")
+                })?;
+                Ok(decoded_lucidmq)
             }
             Err(_err) => {
                 info!(
@@ -62,8 +66,11 @@ impl Broker {
                     base_directory: directory.clone(),
                     topics: Arc::new(RwLock::new(lucidmq_vec)),
                 };
-                fs::create_dir_all(directory).expect("Unable to create directory");
-                lucidmq
+                fs::create_dir_all(directory).map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to create lucidmq directory")
+                })?;
+                Ok(lucidmq)
             }
         }
     }
@@ -77,7 +84,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_topic(capmessage);
+                    let data = self.handle_topic(capmessage).unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -87,7 +94,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_producer(capmessage);
+                    let data = self.handle_producer(capmessage).unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -97,7 +104,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_consumer(capmessage);
+                    let data = self.handle_consumer(capmessage).unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -123,31 +130,35 @@ impl Broker {
     fn handle_topic(
         &mut self,
         topic_request_message: TypedReader<Builder<HeapAllocator>, topic_request::Owned>,
-    ) -> Vec<u8> {
-        let topic_request = topic_request_message.get().unwrap();
-        let topic_name = topic_request.get_topic_name().unwrap();
+    ) -> Result<Vec<u8>, BrokerError> {
+        let topic_request = topic_request_message.get().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to unpack topic request message")
+        })?;
+        let topic_name = topic_request.get_topic_name().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to unpack topic name from topic request")
+        })?;
         match topic_request.which() {
             Ok(topic_request::Which::Create(_create_request)) => {
-                self.handle_create_topic(topic_name)
+                Ok(self.handle_create_topic(topic_name))?
             }
             Ok(topic_request::Which::Delete(_delete_request)) => {
-                self.handle_delete_topic(topic_name)
+                Ok(self.handle_delete_topic(topic_name))?
             }
             Ok(topic_request::Which::Describe(_describe_request)) => {
-                self.handle_describe_topic(topic_name)
+                Ok(self.handle_describe_topic(topic_name))?
             }
-            Err(_) => {
-                unimplemented!()
-            }
+            Err(_) => Err(BrokerError::new("Unknown topic request type")),
         }
     }
 
-    fn handle_create_topic(&mut self, topic_name: &str) -> Vec<u8> {
+    fn handle_create_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(_) => {
                 warn!("topic already exisits");
-                new_topic_response_create(topic_name, false)
+                Ok(new_topic_response_create(topic_name, false))
             }
             None => {
                 let topic = Topic::new(
@@ -156,45 +167,71 @@ impl Broker {
                     1000,
                     10000,
                 );
-                fs::create_dir_all(&topic.directory).expect("Unable to create directory");
+                fs::create_dir_all(&topic.directory).map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to create topic directory")
+                })?;
                 {
                     self.topics
                         .write()
-                        .expect("unable to get write lock")
+                        .map_err(|e| {
+                            error!("{}", e);
+                            BrokerError::new("Unable to get write lock on topics")
+                        })?
                         .push(Arc::new(RwLock::new(topic)));
                 }
                 self.flush();
-                new_topic_response_create(topic_name, true)
+                Ok(new_topic_response_create(topic_name, true))
             }
         }
     }
 
-    fn handle_describe_topic(&mut self, topic_name: &str) -> Vec<u8> {
+    fn handle_describe_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(ind) => {
-                let topics = self.topics.read().unwrap();
-                let topic = topics.get(ind).unwrap().read().unwrap();
+                let topics = self.topics.read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get read lock on topics")
+                })?;
+                let topic = topics.get(ind).unwrap().read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get read lock on single topic")
+                })?;
                 let cgs = topic.get_consumer_groups();
                 let max_segment_size = topic.get_max_segment_size();
                 info!("{}, {:?}, {}", topic_name, cgs, max_segment_size);
-                new_topic_response_describe(topic_name, true, topic.max_topic_size, topic.max_segment_size, cgs)
+                Ok(new_topic_response_describe(
+                    topic_name,
+                    true,
+                    topic.max_topic_size,
+                    topic.max_segment_size,
+                    cgs,
+                ))
             }
             None => {
                 warn!("topic does not exist");
                 let dummy_vec = Vec::new();
-                new_topic_response_describe(topic_name, false, 0, 0, dummy_vec)
+                Ok(new_topic_response_describe(
+                    topic_name, false, 0, 0, dummy_vec,
+                ))
             }
         }
     }
 
-    fn handle_delete_topic(&mut self, topic_name: &str) -> Vec<u8> {
+    fn handle_delete_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(ind) => {
                 // Get the topic directory
-                let topics = self.topics.read().unwrap();
-                let topic = topics.get(ind).unwrap().read().unwrap();
+                let topics = self.topics.read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get read lock on topics")
+                })?;
+                let topic = topics.get(ind).unwrap().read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get read lock on single topic")
+                })?;
                 let topic_directory = &topic.directory.clone();
                 // Clean up access since we dont need them anymore
                 drop(topic);
@@ -202,15 +239,21 @@ impl Broker {
                 // Remove the topic from the topic vector
                 self.topics
                     .write()
-                    .expect("unable to get topics write lock")
+                    .map_err(|e| {
+                        error!("{}", e);
+                        BrokerError::new("Unable to get write lock on topics")
+                    })?
                     .remove(ind);
-                fs::remove_dir_all(topic_directory).expect("Unable to delete topic directory");
+                fs::remove_dir_all(topic_directory).map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to delete diretory of topic")
+                })?;
                 self.flush();
-                new_topic_response_delete(topic_name, true)
+                Ok(new_topic_response_delete(topic_name, true))
             }
             None => {
                 warn!("topic does not exist");
-                new_topic_response_delete(topic_name, false)
+                Ok(new_topic_response_delete(topic_name, false))
             }
         }
     }
@@ -218,20 +261,35 @@ impl Broker {
     fn handle_consumer(
         &mut self,
         consume_request: TypedReader<Builder<HeapAllocator>, consume_request::Owned>,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, BrokerError> {
         info!("Handling consumer message");
-        let consume_request_reader = consume_request.get().unwrap();
-        let topic_name = consume_request_reader.get_topic_name().unwrap();
-        let consumer_group = consume_request_reader.get_consumer_group().unwrap();
+        let consume_request_reader = consume_request.get().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get consume request from bytes")
+        })?;
+        let topic_name = consume_request_reader.get_topic_name().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get topic name from consume request")
+        })?;
+        let consumer_group = consume_request_reader.get_consumer_group().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get consumer group from consume request")
+        })?;
         let timeout = consume_request_reader.get_timout();
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(x) => {
                 let broker = self.clone();
-                let found_topic = &self.topics.read().expect("unable to get read lock")[x];
+                let found_topic = &self.topics.read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get read lock on topic")
+                })?[x];
                 let consumer_group = found_topic
                     .write()
-                    .expect("unable to get writer")
+                    .map_err(|e| {
+                        error!("{}", e);
+                        BrokerError::new("Unable to get wrote lock on topic")
+                    })?
                     .load_consumer_group(consumer_group);
                 let mut consumer = Consumer::new(
                     found_topic.clone(),
@@ -240,13 +298,13 @@ impl Broker {
                 );
                 let messages = consumer.poll(timeout);
                 let data = new_consume_response(topic_name, true, messages);
-                return data;
+                Ok(data)
             }
             None => {
                 warn!("topic does not exist");
                 let message_data = Vec::new();
                 let data = new_consume_response(topic_name, false, message_data);
-                return data;
+                Ok(data)
             }
         }
     }
@@ -254,29 +312,42 @@ impl Broker {
     fn handle_producer(
         &mut self,
         produce_request: TypedReader<Builder<HeapAllocator>, produce_request::Owned>,
-    ) -> Vec<u8> {
+    ) -> Result<Vec<u8>, BrokerError> {
         info!("Handling producer message");
-        let req = produce_request.get().unwrap();
-        let topic_name = req.get_topic_name().unwrap();
+        let produce_request_reader = produce_request.get().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get produce request reader")
+        })?;
+        let topic_name = produce_request_reader.get_topic_name().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get topic name from produce request")
+        })?;
         let found_index = self.check_topics(topic_name);
         match found_index {
             Some(x) => {
-                let found_topic = &self.topics.read().expect("unable to get read lock")[x];
+                let found_topic = &self.topics.read().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get reader for topics")
+                })?[x];
                 let mut producer = Producer::new(found_topic.clone());
                 // Parse out cap n proto produce messages and submit them to the commitlog
-                let cap_msgs = req.get_messages().unwrap();
+                let cap_msgs = produce_request_reader.get_messages().map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to get produce request messages")
+                })?;
                 let mut last_offset = 0;
                 for msg in cap_msgs {
                     let mut builder_message = Builder::new_default();
-                    builder_message.set_root(msg).unwrap();
+                    builder_message.set_root(msg).map_err(|e| {
+                        error!("{}", e);
+                        BrokerError::new("Unable to set root for our produce request builder")
+                    })?;
                     let bytes = serialize::write_message_to_words(&builder_message);
                     last_offset = producer.produce_bytes(&bytes);
                 }
-                return new_produce_response(topic_name, last_offset.into(), true);
+                Ok(new_produce_response(topic_name, last_offset.into(), true))
             }
-            None => {
-                return new_produce_response(topic_name, 0, false);
-            }
+            None => Ok(new_produce_response(topic_name, 0, false)),
         }
     }
 

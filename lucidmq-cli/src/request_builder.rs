@@ -91,7 +91,7 @@ pub fn new_produce_request(topic_name: &str, value: &[u8]) -> Vec<u8> {
     framed_message
 }
 
-pub fn new_consume_message(topic_name: &str, consumer_group: &str) -> Vec<u8> {
+pub fn new_consume_message(topic_name: &str, consumer_group: &str, timeout: u64) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
 
@@ -100,8 +100,7 @@ pub fn new_consume_message(topic_name: &str, consumer_group: &str) -> Vec<u8> {
 
     consume_request.set_topic_name(topic_name);
     consume_request.set_consumer_group(consumer_group);
-    consume_request.set_timout(1);
-
+    consume_request.set_timout(timeout);
 
     message_envelope.set_consume_request(consume_request.reborrow_as_reader()).expect("Unable to set message sent");
 

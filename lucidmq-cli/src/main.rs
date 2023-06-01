@@ -25,7 +25,7 @@ fn respond(line: &str) -> Result<Vec<u8>, String> {
         Some(("consume", sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
             let consumer_group = sub_matches.get_one::<String>("CONSUMER_GROUP").expect("required");
-            return Ok(request_builder::new_consume_message(topic_name, consumer_group));
+            return Ok(request_builder::new_consume_message(topic_name, consumer_group, 1));
         }
         Some(("topic", sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
@@ -105,12 +105,14 @@ async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, m
 }
 
 async fn stdout_processor(topic_name: &str, consumer_group: &str, stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: UnboundedReceiver<String>) -> io::Result<()> {
-    let msg = request_builder::new_consume_message(topic_name, consumer_group);
-    stdin_tx.send(msg).expect("Unable to send message");
-    let response = stdin_rx.recv().await.expect("Unable to recieve message");
-    write!(std::io::stdout(), "{}", response).expect("Unable to write message");
-    std::io::stdout().flush().expect("Unable to flush message");
-    Ok(())
+    loop {
+        let msg = request_builder::new_consume_message(topic_name, consumer_group, 10000);
+        stdin_tx.send(msg).expect("Unable to send message");
+        let response = stdin_rx.recv().await.expect("Unable to recieve message");
+        write!(std::io::stdout(), "{}", response).expect("Unable to write message");
+        std::io::stdout().flush().expect("Unable to flush message");
+    }
+    //Ok(())
 }
 
 #[tokio::main]
@@ -154,9 +156,6 @@ async fn main() -> Result<(), String> {
             info!("Exiting...");
             return Ok(());
         },
-        // Probably need to add another channel so we can block until we get a message back. This would simplify reading 
-        // messages that are just randomly logged out. We need asyc behavior to run the server, however we need a synchronous model to be able
-        // to reason about messages coming back and forth from the client. Serious refactoring needed.
         Some(("consumer", sub_matches)) => {
             let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
             let port = sub_matches.get_one::<String>("PORT").expect("required");

@@ -26,7 +26,7 @@ pub async fn main() {
     let response_channel_reciever: RecieverType;
     (response_channel_sender, response_channel_reciever) = mpsc::channel(32);
 
-    let broker = broker::Broker::new("test_log".to_string());
+    let broker = broker::Broker::new("test_log".to_string()).unwrap();
     tokio::spawn(async move {
         broker
             .run(request_channel_reciever, response_channel_sender)

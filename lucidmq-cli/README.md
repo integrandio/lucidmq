@@ -23,7 +23,11 @@ This script is useful for getting started with LucidMQ from a unix environment.
 For the linux wizards who need to get logs piped in LucidMQ
 
 ```
-tail -f myfile.txt | cargo run producer 127.0.0.1 5000 {topic_name}
+tail -f myfile.txt | cargo run producer 127.0.0.1 6969 {topic_name}
+```
+
+```
+echo "hello world" >> myfile.txt
 ```
 
 ## To Run the Consume Script
