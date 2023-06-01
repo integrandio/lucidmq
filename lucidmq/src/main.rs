@@ -32,7 +32,10 @@ pub async fn main() {
             .run(request_channel_reciever, response_channel_sender)
             .await;
     });
-    let server = tcp_server::LucidTcpServer::new(request_channel_sender, response_channel_reciever);
-    // let server = quic_server::LucidQuicServer::new(request_channel_sender, response_channel_reciever);
+    let server = tcp_server::LucidTcpServer::new(
+        "127.0.0.1",
+        "6969",
+        request_channel_sender,
+        response_channel_reciever).unwrap();
     server.run_server().await;
 }

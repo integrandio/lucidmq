@@ -2,12 +2,13 @@ use capnp::message::Builder;
 use capnp::serialize;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
+use crate::utils::{TOPIC_CREATE, TOPIC_DESCRIBE, TOPIC_DELETE};
 
 pub fn new_topic_request(topic_name: &str, topic_request_type: &str) -> Vec<u8> {
     match topic_request_type {
-        "create" => new_topic_request_create(topic_name),
-        "describe" => new_topic_request_describe(topic_name),
-        "delete" => new_topic_request_delete(topic_name),
+        TOPIC_CREATE => new_topic_request_create(topic_name),
+        TOPIC_DESCRIBE => new_topic_request_describe(topic_name),
+        TOPIC_DELETE => new_topic_request_delete(topic_name),
         _ => panic!("Invalid topic command...")
     }
 }
@@ -63,7 +64,7 @@ fn new_topic_request_delete(topic_name: &str) -> Vec<u8> {
     framed_message
 }
 
-pub fn new_produce_request(topic_name: &str, value: &[u8]) -> Vec<u8> {
+pub fn new_produce_request(topic_name: &str, values: Vec<Vec<u8>>) -> Vec<u8> {
     let mut request_message_envelope = Builder::new_default();
     let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
     let mut request_message = Builder::new_default();
@@ -71,16 +72,20 @@ pub fn new_produce_request(topic_name: &str, value: &[u8]) -> Vec<u8> {
         let mut produce_request = request_message.init_root::<produce_request::Builder>();
     
         produce_request.set_topic_name(topic_name);
-    
-        let mut messages = produce_request.init_messages(1);
+        
+        let size = u32::try_from(values.len()).unwrap();
+
+        let mut messages = produce_request.init_messages(size);
         {
-            let mut message_thing = messages.reborrow().get(0);
-            message_thing.set_key("key".as_bytes());
-            message_thing.set_value(value);
-            let current_ts = SystemTime::now()
-                .duration_since(UNIX_EPOCH).unwrap()
-                .as_millis() as u64;
-            message_thing.set_timestamp(current_ts);
+            for (i, msg) in values.iter().enumerate() {
+                let mut message_thing = messages.reborrow().get(i.try_into().unwrap());
+                message_thing.set_key("key".as_bytes());
+                message_thing.set_value(msg);
+                let current_ts = SystemTime::now()
+                    .duration_since(UNIX_EPOCH).unwrap()
+                    .as_millis() as u64;
+                message_thing.set_timestamp(current_ts);
+            }
         }
     }
 

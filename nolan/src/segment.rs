@@ -281,7 +281,6 @@ mod segment_tests {
         assert!(Path::new(&segment.file_name).exists());
     }
 
-
     #[test]
     fn test_read_at() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");

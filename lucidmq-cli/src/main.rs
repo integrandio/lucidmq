@@ -1,5 +1,6 @@
 mod tcp_client;
 use std::io::Write;
+use std::time::{Instant, Duration};
 use std::{thread, time};
 use std::{net::SocketAddr};
 use env_logger::Builder;
@@ -9,7 +10,10 @@ mod request_builder;
 pub mod lucid_schema_capnp;
 mod cap_n_proto_helper;
 mod cli_helper;
+pub mod utils;
 use std::io::{self, BufRead};
+
+use crate::utils::{CONNECT, PRODUCER, CONSUMER, PRODUCE, CONSUME, TOPIC, QUIT};
 
 fn respond(line: &str) -> Result<Vec<u8>, String> {
     let args = shlex::split(line).ok_or("error: Invalid quoting")?;
@@ -17,22 +21,24 @@ fn respond(line: &str) -> Result<Vec<u8>, String> {
         .try_get_matches_from(args)
         .map_err(|e| e.to_string())?;
     match matches.subcommand() {
-        Some(("produce", sub_matches)) => {
+        Some((PRODUCE, sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
-            let msg = "value".as_bytes();
-            return Ok(request_builder::new_produce_request(topic_name, msg));
+            let msg = "value".as_bytes().to_vec();
+            let mut messages_to_produce: Vec<Vec<u8>> = Vec::new();
+            messages_to_produce.push(msg);
+            return Ok(request_builder::new_produce_request(topic_name, messages_to_produce));
         }
-        Some(("consume", sub_matches)) => {
+        Some((CONSUME, sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
             let consumer_group = sub_matches.get_one::<String>("CONSUMER_GROUP").expect("required");
             return Ok(request_builder::new_consume_message(topic_name, consumer_group, 1));
         }
-        Some(("topic", sub_matches)) => {
+        Some((TOPIC, sub_matches)) => {
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
             let operation_type = sub_matches.get_one::<String>("TYPE").expect("required");
             return Ok(request_builder::new_topic_request(topic_name, operation_type));
         }
-        Some(("quit", _matches)) => {
+        Some((QUIT, _matches)) => {
             write!(std::io::stdout(), "Exiting ...").map_err(|e| e.to_string())?;
             std::io::stdout().flush().map_err(|e| e.to_string())?;
             return Ok("0".as_bytes().to_vec());
@@ -84,6 +90,10 @@ async fn interactive_handler(stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: U
 }
 
 async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: UnboundedReceiver<String>) -> io::Result<()> {
+    let buffer_duration = Duration::from_millis(5000);
+    let mut messages_to_produce: Vec<Vec<u8>> = Vec::new();
+    let start_time = Instant::now();
+    let mut elapsed_duration = start_time.elapsed();
     loop {
         let mut buffer = String::new();
         let stdin = io::stdin();
@@ -92,9 +102,17 @@ async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, m
         if buffer.len() == 0 {
             continue;
         }
+        messages_to_produce.push(buffer.as_bytes().to_vec());
+
+        if buffer_duration > elapsed_duration {
+            elapsed_duration = start_time.elapsed();
+            continue;
+        }
         // Can these requests be batched?
-        let msg = request_builder::new_produce_request(topic_name, buffer.as_bytes());
+        let msg = request_builder::new_produce_request(topic_name, messages_to_produce);
         stdin_tx.send(msg).expect("Unable to send message");
+        // Reset our vector to clear out our buffer
+        messages_to_produce = Vec::new();
         let response = stdin_rx.recv().await.expect("Unable to recieve message");
         write!(std::io::stdout(), "{}", response).expect("Unable to write message");
         std::io::stdout().flush().expect("Unable to flush message");
@@ -106,11 +124,13 @@ async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, m
 
 async fn stdout_processor(topic_name: &str, consumer_group: &str, stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: UnboundedReceiver<String>) -> io::Result<()> {
     loop {
-        let msg = request_builder::new_consume_message(topic_name, consumer_group, 10000);
+        let msg = request_builder::new_consume_message(topic_name, consumer_group, 500);
         stdin_tx.send(msg).expect("Unable to send message");
         let response = stdin_rx.recv().await.expect("Unable to recieve message");
         write!(std::io::stdout(), "{}", response).expect("Unable to write message");
         std::io::stdout().flush().expect("Unable to flush message");
+        // Make this configurable
+        thread::sleep(Duration::from_secs(1))
     }
     //Ok(())
 }
@@ -128,7 +148,7 @@ async fn main() -> Result<(), String> {
     (response_channel_sender , response_channel_reciever) = tokio::sync::mpsc::unbounded_channel();
 
     match matches.subcommand() {
-        Some(("connect", sub_matches)) => {
+        Some((CONNECT, sub_matches)) => {
             let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
             let port = sub_matches.get_one::<String>("PORT").expect("required");
 
@@ -140,7 +160,7 @@ async fn main() -> Result<(), String> {
             });
             interactive_handler(request_channel_sender, response_channel_reciever).await
         },
-        Some(("producer", sub_matches)) => {
+        Some((PRODUCER, sub_matches)) => {
             let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
             let port = sub_matches.get_one::<String>("PORT").expect("required");
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");
@@ -156,7 +176,7 @@ async fn main() -> Result<(), String> {
             info!("Exiting...");
             return Ok(());
         },
-        Some(("consumer", sub_matches)) => {
+        Some((CONSUMER, sub_matches)) => {
             let address = sub_matches.get_one::<String>("ADDRESS").expect("required");
             let port = sub_matches.get_one::<String>("PORT").expect("required");
             let topic_name = sub_matches.get_one::<String>("TOPIC_NAME").expect("required");

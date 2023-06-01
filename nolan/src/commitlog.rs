@@ -59,9 +59,7 @@ impl Commitlog {
                 );
                 if err == split_err {
                     self.split();
-                    self.append(data);
-                    //This should never hit, since this is a recursive call....
-                    return 0;
+                    self.append(data)
                 } else {
                     panic!("{}", err)
                 }
@@ -230,7 +228,7 @@ impl Commitlog {
         self.current_segment.flush().expect("Unable to flush to disk");
 
         // Get the next offset from current segment and create a new segment with it
-        let next_offset = self.current_segment.next_offset;
+        let next_offset = self.current_segment.starting_offset + self.current_segment.next_offset;
 
         self.current_segment = VirtualSegment::new(&self.directory, self.max_segment_size, next_offset);
 
@@ -382,13 +380,15 @@ mod commitlog_tests {
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
             let test_data = string_message.as_bytes();
-            cl.append(test_data);
+            let offset = cl.append(test_data);
+            println!("{}", offset);
+            assert_eq!(offset, i);
         }
 
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
             let test_data = string_message.as_bytes();
-            let retrived_message = cl.read(i).expect("Unable to retrieve message");
+            let retrived_message = cl.read(i.into()).expect("Unable to retrieve message");
             assert_eq!(test_data, &*retrived_message);
         }
     }

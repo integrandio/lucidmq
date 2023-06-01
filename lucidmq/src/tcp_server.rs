@@ -17,6 +17,7 @@ use tokio::{
 };
 
 use crate::{types::{SenderType, RecieverType }};
+use crate::lucidmq_errors::ServerError;
 
 type PeerMap = Arc<Mutex<HashMap<String, OwnedWriteHalf>>>;
 
@@ -28,15 +29,19 @@ pub struct LucidTcpServer {
 }
 
 impl LucidTcpServer {
-    pub fn new(sender: SenderType, reciever: RecieverType) -> LucidTcpServer {
+    pub fn new(host: &str, port: &str, sender: SenderType, reciever: RecieverType) -> Result<LucidTcpServer, ServerError> {
+        let addr_string = format!("{}:{}", host, port);
         // TODO: this should be passed in as configuration values 
-        let addr = "127.0.0.1:6969".parse().unwrap();
-        LucidTcpServer { 
+        let addr = addr_string.parse().map_err(|e| {
+            error!("{}", e);
+            ServerError::new("Unable to parse host string and port into socketaddress")
+        })?;
+        Ok(LucidTcpServer { 
             peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,
             sender: sender,
             reciever: reciever
-        }
+        })
     }
 
     /// Runs a tcp server bound to given address.

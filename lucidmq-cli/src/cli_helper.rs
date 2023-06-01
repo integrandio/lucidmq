@@ -1,4 +1,5 @@
 use clap::{arg, Command};
+use crate::utils::{CONNECT, PRODUCER, CONSUMER, PRODUCE, CONSUME, TOPIC, QUIT};
 
 pub fn base_cli() -> Command<'static> {
     Command::new("LucidMQ")
@@ -8,21 +9,21 @@ pub fn base_cli() -> Command<'static> {
         .allow_external_subcommands(true)
         .allow_invalid_utf8_for_external_subcommands(true)
         .subcommand(
-            Command::new("connect")
+            Command::new(CONNECT)
                 .about("Create an interactive connection to a LucidMQ broker instance")
                 .arg(arg!(<ADDRESS> "The address where your LucidMQ is"))
                 .arg(arg!(<PORT> "The port where your LucidMQ is"))
                 .arg_required_else_help(true),
         )
         .subcommand(
-            Command::new("producer")
+            Command::new(PRODUCER)
                 .about("Create a producer instance that takes in piped arguements to produce.")
                 .arg(arg!(<ADDRESS> "The address where your LucidMQ is"))
                 .arg(arg!(<PORT> "The port where your LucidMQ is"))
                 .arg(arg!(<TOPIC_NAME> "The topice where you want to produce messages to"))
                 .arg_required_else_help(true),
         )
-        .subcommand(Command::new("consumer")
+        .subcommand(Command::new(CONSUMER)
             .about("Create a consumer instance that allows you pipe out data.")
             .arg(arg!(<ADDRESS> "The address where your LucidMQ is"))
             .arg(arg!(<PORT> "The port where your LucidMQ is"))
@@ -52,28 +53,28 @@ pub fn interactive_cli() -> Command<'static> {
         .subcommand_help_heading("INTERACTIVE")
         .help_template(PARSER_TEMPLATE)
         .subcommand(
-            Command::new("produce")
+            Command::new(PRODUCE)
                 .about("Get a response")
                 .arg(arg!(<TOPIC_NAME> "The topic to produce to"))
                 .arg_required_else_help(true)
                 .help_template(APPLET_TEMPLATE),
         )
         .subcommand(
-            Command::new("consume")
+            Command::new(CONSUME)
                 .arg(arg!(<TOPIC_NAME> "The topic to consume from"))
                 .arg(arg!(<CONSUMER_GROUP> "The consumer group to use"))
                 .arg_required_else_help(true)
                 .help_template(APPLET_TEMPLATE),
         )
         .subcommand(
-            Command::new("topic")
+            Command::new(TOPIC)
                 .arg(arg!(<TYPE> "The topic request message tye"))
                 .arg(arg!(<TOPIC_NAME> "The topic to consume from"))
                 .arg_required_else_help(true)
                 .help_template(APPLET_TEMPLATE),
         )
         .subcommand(
-            Command::new("quit")
+            Command::new(QUIT)
                 .alias("exit")
                 .about("Quit the REPL")
                 .help_template(APPLET_TEMPLATE),

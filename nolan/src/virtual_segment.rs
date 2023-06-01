@@ -8,9 +8,12 @@ use std::{
 
 pub struct VirtualSegment {
     contents: Cursor<Vec<u8>>,
+    /// The last position in the log file to allow for easy writes
     position: u32,
     max_bytes: u64,
+    /// The starting offset of the segment relative to the whole commitlog
     pub starting_offset: u16,
+    /// The next offset that was written to relative to the current segment
     pub next_offset: u16,
     index: VirtualIndex,
     pub full_log_path: String,
@@ -32,7 +35,7 @@ impl VirtualSegment {
             position: 0,
             max_bytes: max_segment_bytes,
             starting_offset: offset,
-            next_offset: offset,
+            next_offset: 0,
             index: new_virtual_index,
             full_log_path: log_file_path,
         }
@@ -152,7 +155,7 @@ impl VirtualSegment {
     pub fn read_at(&mut self, offset: usize) -> Result<Vec<u8>, SegmentError> {
         // This condition is only applied when we're dealing with segment 0, can this be combined below??
         if (self.starting_offset == 0 && offset >= usize::from(self.next_offset))
-            || (offset >= usize::from(self.next_offset - self.starting_offset))
+            || (offset >= usize::from(self.next_offset + self.starting_offset))
         {
             return Err(SegmentError::new("offset is out of bounds"));
         }
@@ -250,6 +253,18 @@ mod virtual_segment_tests {
         let segment_error = vs.write(&bytes).unwrap_err();
         let want =
             SegmentError::new("Write not possible. Segment log would be greater than max bytes");
+        assert_eq!(want, segment_error);
+    }
+
+     #[test]
+    fn test_offset_greater_than_segment() {
+        let mut vs = VirtualSegment::new("test_dir", 100, 0);
+        let bytes: [u8; 10] = [0; 10];
+        vs.write(&bytes).unwrap();
+
+        let segment_error = vs.read_at(1).unwrap_err();
+        let want =
+            SegmentError::new("offset is out of bounds");
         assert_eq!(want, segment_error);
     }
 

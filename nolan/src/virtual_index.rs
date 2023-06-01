@@ -113,7 +113,7 @@ impl VirtualIndex {
                         circut_break = true;
                     } else {
                         error!{"{}", error}
-                        return Err(IndexError::new("unable seek to begining of the index"));
+                        return Err(IndexError::new("unable seek to read from index file"));
                     }
                 },
             }
@@ -123,7 +123,10 @@ impl VirtualIndex {
             //First write bytes to our virtual buffer
             self.contents
                 .write(&buffer)
-                .expect("unable to write to buffer");
+                .map_err(|e| {
+                    error!("{}", e);
+                    IndexError::new("unable to write to buffer")
+                })?;
 
             //Decode the entry and add it to our entry vector
             let decoded_entry: Entry = bincode::deserialize(&buffer).map_err(|e| {
@@ -207,8 +210,8 @@ mod virtual_index_tests {
             .add_entry(start_position, total_bytes)
             .expect("Unable to add entry");
 
-        let _error_result = test_index.return_entry_details_by_offset(1);
-        let error: Result<u64, IndexError> = Err(IndexError::new("test"));
-        assert!(matches!(error, _error_result));
+        let index_error = test_index.return_entry_details_by_offset(1).unwrap_err();
+        let wanted_error: IndexError = IndexError::new("offset requested is greater than the entries legnth");
+        assert_eq!(wanted_error, index_error);
     }
 }

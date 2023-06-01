@@ -84,7 +84,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_topic(capmessage).unwrap();
+                    let data = self.handle_topic(capmessage).await.unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -94,7 +94,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_producer(capmessage).unwrap();
+                    let data = self.handle_producer(capmessage).await.unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -104,7 +104,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_consumer(capmessage).unwrap();
+                    let data = self.handle_consumer(capmessage).await.unwrap();
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -127,7 +127,7 @@ impl Broker {
         }
     }
 
-    fn handle_topic(
+    async fn handle_topic(
         &mut self,
         topic_request_message: TypedReader<Builder<HeapAllocator>, topic_request::Owned>,
     ) -> Result<Vec<u8>, BrokerError> {
@@ -258,7 +258,7 @@ impl Broker {
         }
     }
 
-    fn handle_consumer(
+    async fn handle_consumer(
         &mut self,
         consume_request: TypedReader<Builder<HeapAllocator>, consume_request::Owned>,
     ) -> Result<Vec<u8>, BrokerError> {
@@ -309,7 +309,7 @@ impl Broker {
         }
     }
 
-    fn handle_producer(
+    async fn handle_producer(
         &mut self,
         produce_request: TypedReader<Builder<HeapAllocator>, produce_request::Owned>,
     ) -> Result<Vec<u8>, BrokerError> {

@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 
 //------------Index Error--------------------
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct IndexError {
     details: String,
 }
