@@ -45,12 +45,15 @@ impl VirtualIndex {
     }
 
     /**
-     * Given an offset, return the entry start
+     * Given an offset, return the entry in the index starting position and total bytes.
      */
     pub fn return_entry_details_by_offset(
         &self,
         offset: usize,
     ) -> Result<(u64, usize), IndexError> {
+        if self.entries.len() <= offset {
+            return Err(IndexError::new("offset requested is greater than the entries legnth"))
+        }
         // This can throw an exception if the offset is greater than the size of the array, how do we check?
         let entry = self.entries[offset];
         let start_offset: u64 = entry.start.into();
@@ -63,18 +66,23 @@ impl VirtualIndex {
     }
 
     /// Writes the buffered data to disk.
-    pub fn flush(&self) {
+    pub fn flush(&self) -> Result<(), IndexError> {
         let mut index_file = OpenOptions::new()
             .create(true)
             .read(false)
             .write(true)
             .append(false)
-            .open(self.full_index_file_path.clone())
-            .expect("Unable to create and open file");
+            .open(self.full_index_file_path.clone()).map_err(|e| {
+                error!("{}", e);
+                IndexError::new("Unable to create and open index file")
+            })?;
 
         index_file
-            .write_all(self.contents.get_ref())
-            .expect("Unable to flush contents to file");
+            .write_all(self.contents.get_ref()).map_err(|e| {
+                error!("{}", e);
+                IndexError::new("Unable to flush contents to index file")
+            })?;
+            Ok(())
     }
 
     /**
@@ -86,8 +94,10 @@ impl VirtualIndex {
             .read(true)
             .write(false)
             .append(false)
-            .open(self.full_index_file_path.clone())
-            .expect("Unable to create and open file");
+            .open(self.full_index_file_path.clone()).map_err(|e| {
+                error!("{}", e);
+                IndexError::new("Unable to create and open index file")
+            })?;
 
         index_file.seek(SeekFrom::Start(0)).map_err(|e| {
             error!("{}", e);
@@ -96,16 +106,17 @@ impl VirtualIndex {
         let mut circut_break: bool = false;
         loop {
             let mut buffer = [0; 8];
-            //TODO: error handle this correctly
-            index_file.read_exact(&mut buffer).unwrap_or_else(|error| {
-                if error.kind() == ErrorKind::UnexpectedEof {
-                    circut_break = true;
-                } else {
-                    // error!{"{}", error}
-                    // return IndexError::new("unable seek to begining of the index");
-                    panic!("{}", error)
-                }
-            });
+            match index_file.read_exact(&mut buffer) {
+                Ok(_) => {},
+                Err(error) => {
+                    if error.kind() == ErrorKind::UnexpectedEof {
+                        circut_break = true;
+                    } else {
+                        error!{"{}", error}
+                        return Err(IndexError::new("unable seek to begining of the index"));
+                    }
+                },
+            }
             if circut_break {
                 break;
             }
@@ -132,6 +143,7 @@ impl VirtualIndex {
 #[cfg(test)]
 mod virtual_index_tests {
     use crate::virtual_index::VirtualIndex;
+    use crate::nolan_errors::IndexError;
     #[test]
     fn test_add_entry() {
         let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
@@ -168,5 +180,35 @@ mod virtual_index_tests {
             assert_eq!(total_bytes, retrieved_entry.total);
             start_position += total_bytes
         }
+    }
+
+    #[test]
+    fn test_retrieve_entry() {
+        let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
+
+        let start_position = 0;
+        let total_bytes = 10;
+        test_index
+            .add_entry(start_position, total_bytes)
+            .expect("Unable to add entry");
+
+        let (retrieved_position, retrieved_total_bytes) = test_index.return_entry_details_by_offset(0).expect("Unable to return entry");
+        assert_eq!(u64::from(start_position), retrieved_position);
+        assert_eq!(usize::try_from(total_bytes).unwrap(), retrieved_total_bytes);
+    }
+
+    #[test]
+    fn test_retrieve_entry_offset_greater() {
+        let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
+
+        let start_position = 0;
+        let total_bytes = 10;
+        test_index
+            .add_entry(start_position, total_bytes)
+            .expect("Unable to add entry");
+
+        let _error_result = test_index.return_entry_details_by_offset(1);
+        let error: Result<u64, IndexError> = Err(IndexError::new("test"));
+        assert!(matches!(error, _error_result));
     }
 }

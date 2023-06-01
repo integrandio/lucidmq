@@ -27,20 +27,26 @@ impl Cleaner {
             if total_bytes > self.retention_bytes {
                 break;
             }
-            //TODO: error handle this correctly.
-            let segment = segments.get(i).expect("Unable to get index");
-            total_bytes += segment.position as u64;
-            segment_postion -= 1;
+            match segments.get(i) {
+                Some(segment) => {
+                    total_bytes += segment.position as u64;
+                    segment_postion -= 1;
+                },
+                None => return Err(CleanerError::new("Unable to get index of the segment"))
+            }
         }
         for _j in 0..segment_postion {
-            //TODO: error handle this correctly
-            let segmet = segments.get_mut(0).expect("Unable to get index");
-            segmet.delete().map_err(|e| {
-                error!("{}", e);
-                CleanerError::new("unable to delete segment")
-            })?;
-            //Remove the first index of the segment
-            segments.remove(0);
+            match segments.get_mut(0) {
+                Some(segment) => {
+                    segment.delete().map_err(|e| {
+                        error!("{}", e);
+                        CleanerError::new("unable to delete segment")
+                    })?;
+                    //Remove the first index of the segment
+                    segments.remove(0);
+                },
+                None => return Err(CleanerError::new("Unable to get segment for deletion"))
+            }
         }
         Ok(true)
     }

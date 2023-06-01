@@ -38,8 +38,7 @@ impl Index {
             .map_err(|e| {
                 error!("{}", e);
                 IndexError::new(&error_message)
-            })
-            .expect(&error_message); // TODO: Error handle this
+            })?;
         let empty_entry_vec = Vec::new();
         Ok(Index {
             file_name: index_path,
@@ -191,7 +190,7 @@ mod index_tests {
         vs
             .write(message_to_write)
             .expect("unable to write data to virtual segment");
-        vs.flush();
+        vs.flush().expect("Unable to flush");
         let file_name = vs.full_log_path.clone();
         let thing = str::strip_suffix(&file_name, utils::LOG_SUFFIX).expect("unable to strip");
         let index_file_name = format!("{}{}", thing, utils::INDEX_SUFFIX);

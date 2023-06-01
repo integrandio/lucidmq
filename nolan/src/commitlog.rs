@@ -227,7 +227,7 @@ impl Commitlog {
     fn split(&mut self) {
         info!("Spliting commitlog segment");
         //Flush the current virtual segment to disk
-        self.current_segment.flush();
+        self.current_segment.flush().expect("Unable to flush to disk");
 
         // Get the next offset from current segment and create a new segment with it
         let next_offset = self.current_segment.next_offset;

@@ -1,10 +1,10 @@
+use crate::utils;
+use crate::{nolan_errors::SegmentError, virtual_index::VirtualIndex};
+use log::{error, info};
 use std::{
     fs::OpenOptions,
-    io::{Cursor, Read, Seek, SeekFrom, Write}
+    io::{Cursor, Read, Seek, SeekFrom, Write},
 };
-use crate::utils;
-use crate::{virtual_index::VirtualIndex, nolan_errors::SegmentError};
-use log::{error, info};
 
 pub struct VirtualSegment {
     contents: Cursor<Vec<u8>>,
@@ -20,8 +20,12 @@ impl VirtualSegment {
     /// Create a virtual segment with the provided starting offset
     pub fn new(base_directory: &str, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
         info!("Creating a new virtual segment");
-        let log_file_path = utils::create_segment_file_name(&base_directory, offset, utils::LOG_SUFFIX);
-        let index_file_name = utils::create_segment_file_name(&base_directory, offset, utils::INDEX_SUFFIX);
+        let log_file_path =
+            utils::create_segment_file_name(&base_directory, offset, utils::LOG_SUFFIX)
+                .expect("Unable to create log file");
+        let index_file_name =
+            utils::create_segment_file_name(&base_directory, offset, utils::INDEX_SUFFIX)
+                .expect("Unable to create index file");
         let new_virtual_index = VirtualIndex::new(index_file_name);
         VirtualSegment {
             contents: Cursor::new(Vec::new()),
@@ -46,7 +50,11 @@ impl VirtualSegment {
         //     SegmentError::new(&segment_error_str)
         // })?;
         let log_file_name =
-            utils::create_segment_file_name(base_directory, segment_offset, utils::LOG_SUFFIX);
+            utils::create_segment_file_name(base_directory, segment_offset, utils::LOG_SUFFIX)
+                .map_err(|e| {
+                    error!("{}", e);
+                    SegmentError::new("unable to create log file")
+                })?;
 
         let mut log_file = OpenOptions::new()
             .create(false)
@@ -58,11 +66,14 @@ impl VirtualSegment {
                 error!("{}", e);
                 SegmentError::new("unable to open log file")
             })?;
-        
+
         //Create our buffer
         let mut buffer = Vec::new();
         // Read contents from the file into the buffer
-        let total_bytes_read= log_file.read_to_end(&mut buffer).expect("unable to read file to buffer");
+        let total_bytes_read = log_file.read_to_end(&mut buffer).map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("unable to read file to buffer")
+        })?;
 
         // This would be unnesseary if we used u64 for the position
         let current_segment_postion: u32 = u32::try_from(total_bytes_read).map_err(|e| {
@@ -70,8 +81,15 @@ impl VirtualSegment {
             SegmentError::new("unable to convert from u64 to u32")
         })?;
 
-        let index_file_name =
-            utils::create_segment_file_name(base_directory.clone(), segment_offset, utils::INDEX_SUFFIX);
+        let index_file_name = utils::create_segment_file_name(
+            base_directory.clone(),
+            segment_offset,
+            utils::INDEX_SUFFIX,
+        )
+        .map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("unable to create index file")
+        })?;
         let mut loaded_index = VirtualIndex::new(index_file_name);
 
         let mut total_entries = loaded_index.load_index().map_err(|e| {
@@ -98,8 +116,11 @@ impl VirtualSegment {
      * Return the offset in the segment that was written to.
      */
     pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
-        let computed_size_bytes = u64::try_from(self.contents.get_ref().len() + data.len()) 
-            .expect("unable to convert from usize to u64");
+        let computed_size_bytes = u64::try_from(self.contents.get_ref().len() + data.len())
+            .map_err(|e| {
+                error!("{}", e);
+                SegmentError::new("unable to convert from usize to u64")
+            })?;
         if computed_size_bytes > self.max_bytes {
             return Err(SegmentError::new(
                 "Write not possible. Segment log would be greater than max bytes",
@@ -157,30 +178,38 @@ impl VirtualSegment {
         Ok(buffer)
     }
 
-    pub fn flush(&self) {
+    pub fn flush(&self) -> Result<(), SegmentError> {
         let mut log_file = OpenOptions::new()
             .create(true)
             .read(false)
             .write(true)
             .append(false)
             .open(self.full_log_path.clone())
-            .expect("Unable to create and open file");
+            .map_err(|e| {
+                error!("{}", e);
+                SegmentError::new("unable to open log file for flushing")
+            })?;
 
-        self.index.flush();
-        
-        log_file
-            .write_all(self.contents.get_ref())
-            .expect("Unable to flush contents to file");
+        self.index.flush().map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("unable to flush index contents to file")
+        })?;
+
+        log_file.write_all(self.contents.get_ref()).map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("unable to flush log contents to file")
+        })?;
+
+        Ok(())
     }
-
 }
 
 #[cfg(test)]
 mod virtual_segment_tests {
+    use crate::nolan_errors::SegmentError;
+    use crate::virtual_segment::VirtualSegment;
     use std::path::Path;
     use tempdir::TempDir;
-    use crate::virtual_segment::VirtualSegment;
-    use crate::nolan_errors::SegmentError;
 
     #[test]
     fn test_one_message() {
@@ -218,10 +247,9 @@ mod virtual_segment_tests {
     fn test_message_greater_than_segment() {
         let mut vs = VirtualSegment::new("test_dir", 10, 0);
         let bytes: [u8; 11] = [0; 11];
-        let segment_error = vs
-            .write(&bytes)
-            .unwrap_err();
-        let want = SegmentError::new("Write not possible. Segment log would be greater than max bytes");
+        let segment_error = vs.write(&bytes).unwrap_err();
+        let want =
+            SegmentError::new("Write not possible. Segment log would be greater than max bytes");
         assert_eq!(want, segment_error);
     }
 
@@ -234,10 +262,9 @@ mod virtual_segment_tests {
             .expect("Unable to convert path to string");
         let mut vs = VirtualSegment::new(test_dir_path, 100, 0);
         let data = "hellos".as_bytes();
-        vs
-            .write(data)
+        vs.write(data)
             .expect("unable to write data to virtual segment");
-        vs.flush();
+        vs.flush().expect("Unable to flush");
 
         assert!(Path::new(&vs.full_log_path).exists());
     }

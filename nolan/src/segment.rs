@@ -87,7 +87,10 @@ impl Segment {
             &base_directory,
             segment_offset,
             utils::LOG_SUFFIX,
-        );
+        ).map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("Unable to create log file")
+        })?;
 
         let file = OpenOptions::new()
             .create(true)
@@ -114,7 +117,10 @@ impl Segment {
             &base_directory,
             segment_offset,
             utils::INDEX_SUFFIX,
-        );
+        ).map_err(|e| {
+            error!("{}", e);
+            SegmentError::new("Unable to create index file")
+        })?;
         let mut loaded_index = Index::new(index_file_name).map_err(|e| {
             SegmentError::new(&e.to_string())
         })?;
@@ -256,7 +262,7 @@ mod segment_tests {
         vs
             .write(message_to_write)
             .expect("unable to write data to virtual segment");
-        vs.flush();
+        vs.flush().expect("Unable to flush");
         let file_name = Path::new(&vs.full_log_path).file_name().unwrap().to_str().expect("Unbale to conver os string to string");
         let segment_base = str::strip_suffix(&file_name, utils::LOG_SUFFIX).expect("unable to strip");
         return segment_base.to_string();
