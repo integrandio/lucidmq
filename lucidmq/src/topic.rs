@@ -52,7 +52,7 @@ struct DeserTopic {
 
 impl From<DeserTopic> for Topic {
     fn from(tmp: DeserTopic) -> Self {
-        let commitlog = nolan::Commitlog::new(tmp.directory.clone(), tmp.max_segment_size, tmp.max_topic_size);
+        let commitlog = nolan::Commitlog::new(tmp.directory.clone(), tmp.max_segment_size, tmp.max_topic_size).expect("Unable to create commitlog for topic");
         Self {
             name: tmp.name,
             directory: tmp.directory,
@@ -79,7 +79,7 @@ impl Topic {
         let new_commitlog = nolan::Commitlog::new(new_path
             .to_str()
             .expect("unable to convert to string")
-            .to_string(), max_segment_size, max_topic_size);
+            .to_string(), max_segment_size, max_topic_size).expect("Unable to create commitlog for topic");
         Topic {
             name: topic_name,
             directory: new_path

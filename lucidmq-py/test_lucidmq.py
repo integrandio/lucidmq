@@ -92,6 +92,25 @@ class TestProducer:
         
         # Delete the topic to clean up
         topic_delete_result = topic_manager.delete_topic(topic_name)
+    
+    # Run this test so we attempt a split
+    def test_produce_20_large_message(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        producer = Producer(HOST, PORT)
+        
+        # Create a topic to set up
+        topic_create_result = topic_manager.create_topic(topic_name)
+
+        for x in range(30):
+            value = bytes("myextreamlyverylargevalue{0}".format(x), 'utf-8')
+            produce_request_result = producer.produce(topic_name, b'key', b'value')
+            assert produce_request_result['success'] == True
+            assert produce_request_result['topicName'] == topic_name
+            assert produce_request_result['offset'] == x
+        
+        # Delete the topic to clean up
+        topic_delete_result = topic_manager.delete_topic(topic_name)
 
     def test_produce_topic_dne(self):
         topic_name = get_random_string(10)

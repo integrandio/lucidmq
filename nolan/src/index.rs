@@ -160,7 +160,6 @@ impl Index {
         &self,
         offset: usize,
     ) -> Result<(u64, usize), IndexError> {
-        // This can throw an exception if the offset is greater than the size of the array, how do we check?
         if offset > self.entries.len() {
             return Err(IndexError::new("offset is greater than entries length"));
         }

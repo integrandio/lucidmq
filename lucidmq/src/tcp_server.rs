@@ -31,7 +31,6 @@ pub struct LucidTcpServer {
 impl LucidTcpServer {
     pub fn new(host: &str, port: &str, sender: SenderType, reciever: RecieverType) -> Result<LucidTcpServer, ServerError> {
         let addr_string = format!("{}:{}", host, port);
-        // TODO: this should be passed in as configuration values 
         let addr = addr_string.parse().map_err(|e| {
             error!("{}", e);
             ServerError::new("Unable to parse host string and port into socketaddress")
@@ -60,11 +59,8 @@ impl LucidTcpServer {
                 "connection accepted: addr={}",
                 stream.peer_addr().unwrap()
             );
-
             let cloned_sender = self.sender.clone();
             let arc_peer_map = Arc::new(self.peer_map.clone());
-            //handle_connection(stream, arc_peer_map, cloned_sender).await;
-            // Tokio does not play nice with std net package, switch to tokio net
             tokio::spawn(async move {
                 handle_connection(stream, arc_peer_map, cloned_sender).await;
             });
