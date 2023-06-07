@@ -121,4 +121,65 @@ class TestProducer:
         assert produce_request_result['topicName'] == topic_name
         assert produce_request_result['offset'] == 0
 
+    class TestConsumer:
+        def test_consumeer_1_message(self):
+            topic_name = get_random_string(10)
+            topic_manager = TopicManager(HOST, PORT)
+            producer = Producer(HOST, PORT)
+            consumer = Consumer(HOST, PORT, 100)
+            # Create a topic to set up
+            topic_create_result = topic_manager.create_topic(topic_name)
+
+            key = b'key'
+            value = b'value'
+            # Produce message to our topic
+            produce_request_result = producer.produce(topic_name, key, value)
+
+            consumer_request_result = consumer.consume(topic_name, "cg1")
+
+            # Check the wraper around consumer request
+            assert consumer_request_result['success'] == True
+            assert consumer_request_result['topicName'] == topic_name
+            assert len(consumer_request_result['messages']) == 1
+
+            # Check the message itself
+            message = consumer_request_result['messages'][0]
+            assert message['key'] == key
+            assert message['value'] == value
         
+            # Delete the topic to clean up
+            topic_delete_result = topic_manager.delete_topic(topic_name)
+
+    def test_consumeer_10_message(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        producer = Producer(HOST, PORT)
+        consumer = Consumer(HOST, PORT, 100)
+        # Create a topic to set up
+        topic_create_result = topic_manager.create_topic(topic_name)
+        
+        keys_sent = []
+        values_sent = []
+        
+        for x in range(10):
+            key = bytes('key{}'.format(x), 'utf-8')
+            value = bytes('value{}'.format(x), 'utf-8')
+            keys_sent.append(key)
+            values_sent.append(value)
+            # Produce message to our topic
+            produce_request_result = producer.produce(topic_name, key, value)
+
+        consumer_request_result = consumer.consume(topic_name, "cg1")
+
+        # Check the wraper around consumer request
+        assert consumer_request_result['success'] == True
+        assert consumer_request_result['topicName'] == topic_name
+        
+        assert len(consumer_request_result['messages']) == 10
+        for i in range(len(consumer_request_result['messages'])):
+            message = consumer_request_result['messages'][i]
+            assert keys_sent[i] ==  message['key']
+            assert values_sent[i] ==  message['value']
+    
+        # Delete the topic to clean up
+        topic_delete_result = topic_manager.delete_topic(topic_name)
