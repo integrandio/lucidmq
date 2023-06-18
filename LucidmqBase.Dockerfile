@@ -1,4 +1,5 @@
 # Dockerfile for the building LucidMQ and LucidMQ CLI Continous Integration
+# This Dockerfile/Image is used for running unit tests in CI
 FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive

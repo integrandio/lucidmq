@@ -88,7 +88,6 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
         let message_size: u16 = match bytes_read {
             Ok(0) => break,
             Ok(_total) => {
-                // info!("First Bytes recieved {:?} size {}", buf, total);
                 let message_size = u16::from_le_bytes(buf);
                 message_size
             },

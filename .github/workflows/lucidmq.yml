@@ -14,7 +14,7 @@ on:
 
 jobs:
   build_and_test:
-    name: LucidMQ - Build and Test
+    name: LucidMQ - Build and Unit Test
     runs-on: ubuntu-latest
     container:
       image: registry.nocaply.com/lucidmq-base:latest
@@ -30,3 +30,9 @@ jobs:
         run: cargo build --verbose
       - name: LucidMQ Test
         run: cargo test --verbose
+  integ_tests:
+    test:
+      runs-on: ubuntu-latest
+      steps: 
+        - name: Docker Compose Build and Run
+          run: docker-compose up --build --exit-code-from test-runner

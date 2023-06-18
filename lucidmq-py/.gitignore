@@ -1,6 +1,3 @@
 /__pycache__
 /env
 .pytest_cache
-
-connectors
-gluecid.py

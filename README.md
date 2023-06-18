@@ -24,7 +24,7 @@ LucidMQ is a streaming platform that focuses on providing low configuration and 
 
 ### Repo Structure
 
-The repository is a monorepo with eeverything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. Lucidmq-py provides a client library for Python as well as integration tests for LucidMQ.
+The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. Lucidmq-py provides a client library for Python as well as integration tests for LucidMQ.
 
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq          # Lucidmq broker and server
@@ -63,7 +63,7 @@ docker build -t lucidmq-base .
 2. Build the docker images locally:
 
 ```
-docker build -f Lucidmq.Dcokerfile -t lucidmq .
+docker build -f Lucidmq.Dockerfile -t lucidmq .
 ```
 
 2. Run the Docker Container

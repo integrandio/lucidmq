@@ -1,8 +1,15 @@
+# The LucidMQ server base image
 FROM registry.nocaply.com/lucidmq-base:latest
 
 WORKDIR /build
 # Copy the entire workspace
-COPY . .
+COPY Cargo.toml /build
+COPY protocol /build/protocol
+COPY nolan /build/nolan
+COPY lucidmq /build/lucidmq
+
+# We don't need lucidmq-cli to build the server, so delete it from workspace
+RUN sed -i '/lucidmq-cli/d' /build/Cargo.toml
 
 WORKDIR /build/lucidmq
 # Build your program for release
