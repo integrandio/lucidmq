@@ -1,0 +1,27 @@
+version: "3.9"  # optional since v1.27.0
+services:
+  lucidmq-server:
+    image: lucidmq:latest
+    build: 
+      context: .
+      dockerfile: Lucidmq.Dockerfile
+    environment:
+      - HOST=0.0.0.0
+    ports:
+      - "6969:6969"
+    networks:
+      - testing-network
+  test-runner:
+    image: lucidmq-test
+    build: 
+      context: .
+      dockerfile: LucidmqIntegration.Dockerfile
+    environment:
+      - LUCIDMQ_SERVER_HOST=lucidmq-server
+    depends_on:
+      - lucidmq-server
+    networks:
+      - testing-network
+networks:
+  testing-network:
+    driver: bridge
