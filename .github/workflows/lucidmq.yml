@@ -30,9 +30,17 @@ jobs:
         run: cargo build --verbose
       - name: LucidMQ Test
         run: cargo test --verbose
-  test:
+  integration_tests:
+    name: LucidMQ - Integration Tests
     runs-on: ubuntu-latest
     steps: 
-      - uses: actions/checkout@v2
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Registry Login
+        run: 'echo "$DOCKER_PASS" | docker login --username "$DOCKER_USER" --password-stdin'
+        shell: bash
+        env: 
+          DOCKER_USER: ${{  secrets.DOCKER_REGISTRY_USER }}
+          DOCKER_PASS: ${{  secrets.DOCKER_REGISTRY_PASSWORD }}
       - name: Docker Compose Build and Run
         run: docker-compose up --build --exit-code-from test-runner
