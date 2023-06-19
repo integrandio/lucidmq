@@ -296,7 +296,10 @@ impl Broker {
                     consumer_group,
                     Box::new(move || broker.flush()),
                 );
-                let messages = consumer.poll(timeout);
+                let messages = consumer.poll(timeout).map_err(|e| {
+                    error!("{}", e);
+                    BrokerError::new("Unable to poll consumers commitlog")
+                })?;
                 let data = new_consume_response(topic_name, true, messages);
                 Ok(data)
             }
@@ -343,7 +346,10 @@ impl Broker {
                         BrokerError::new("Unable to set root for our produce request builder")
                     })?;
                     let bytes = serialize::write_message_to_words(&builder_message);
-                    last_offset = producer.produce_bytes(&bytes);
+                    last_offset = producer.produce_bytes(&bytes).map_err(|e| {
+                        error!("{}", e);
+                        BrokerError::new("Unable to produce message to commitlog")
+                    })?;
                 }
                 Ok(new_produce_response(topic_name, last_offset.into(), true))
             }

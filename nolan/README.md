@@ -38,4 +38,9 @@ pub fn main() {
 }
 ```
 
+### Run the unit tests:
+```
+cargo test
+```
+
 

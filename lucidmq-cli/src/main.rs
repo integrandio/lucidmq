@@ -90,7 +90,9 @@ async fn interactive_handler(stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: U
 }
 
 async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, mut stdin_rx: UnboundedReceiver<String>) -> io::Result<()> {
+    //For batching messages, durtion for taking input
     let buffer_duration = Duration::from_millis(5000);
+    // Storing our batched messages
     let mut messages_to_produce: Vec<Vec<u8>> = Vec::new();
     let start_time = Instant::now();
     let mut elapsed_duration = start_time.elapsed();
@@ -108,7 +110,6 @@ async fn stdin_processor(topic_name: &str, stdin_tx: UnboundedSender<Vec<u8>>, m
             elapsed_duration = start_time.elapsed();
             continue;
         }
-        // Can these requests be batched?
         let msg = request_builder::new_produce_request(topic_name, messages_to_produce);
         stdin_tx.send(msg).expect("Unable to send message");
         // Reset our vector to clear out our buffer

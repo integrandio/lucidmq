@@ -71,6 +71,15 @@ docker build -f Lucidmq.Dockerfile -t lucidmq .
 docker run -it -p 6969:6969 lucidmq
 ```
 
+#### Running the integration tests
+
+LucidMQ's integration tests run on the pipeline via every push to main. During local development it may be useful to verify that things are working as intended. Luckily the test infrastructure in bundled in docker compose and is extreamly portable.
+
+Run the integ tests using the following command:
+```
+docker-compose up --build --exit-code-from test-runner
+```
+
 ## Why do you need LucidMQ?
 
 LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundation libraries like Cap N Proto and Rust to eliminate memory bugs. Also, this project aims to have world class documentation to spread knowledge about event streaming based systems.

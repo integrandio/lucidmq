@@ -1,7 +1,5 @@
 //! Nolan is a crate that specifies a implemeation for a commitlog storage structure.
 //!
-
-use core::panic;
 use log::{error, info, warn};
 use std::fs;
 
@@ -10,6 +8,7 @@ use crate::nolan_errors::{CommitlogError, SegmentError};
 use crate::segment::Segment;
 use crate::virtual_segment::VirtualSegment;
 use std::collections::HashMap;
+use crate::utils;
 
 /// Commitlog is a struct that represents the logs stored on memory and on disc.
 /// A commitlog is a directory that is made up of segments that stored within that directory.
@@ -46,14 +45,17 @@ impl Commitlog {
         Ok(commitlog)
     }
 
-    pub fn append(&mut self, data: &[u8]) -> u16 {
+    pub fn append(&mut self, data: &[u8]) -> Result<u16, CommitlogError> {
         match self.current_segment.write(data) {
             Ok(segment_offset_written) => {
                 info!("Successfully wrote to segment");
                 let commitlog_written_offset =
                     self.current_segment.starting_offset + segment_offset_written;
-                self.clean().expect("Unable to clean commitlog");
-                return commitlog_written_offset;
+                self.clean().map_err(|e| {
+                    error!("{}", e);
+                    CommitlogError::new("Unable to clean commitlog")
+                })?;
+                Ok(commitlog_written_offset)
             }
             Err(err) => {
                 let split_err = SegmentError::new(
@@ -63,7 +65,7 @@ impl Commitlog {
                     self.split().expect("Unable to split commitlog");
                     self.append(data)
                 } else {
-                    panic!("{}", err)
+                    Err(CommitlogError::new("Unknown error when writing occured"))
                 }
             }
         }
@@ -81,15 +83,15 @@ impl Commitlog {
                 //if let Ok(entry) = entry {
                 let path = entry.path();
                 if let Some(extension) = path.extension() {
-                    if extension == "log" {
+                    if extension == utils::LOG_EXTENSION {
                         let mut corresponding_index_path = entry.path();
-                        corresponding_index_path.set_extension("index");
+                        corresponding_index_path.set_extension(utils::INDEX_EXTENSION);
                         if !corresponding_index_path.is_file() {
                             files_to_clean.push(path.to_str().unwrap().into());
                         }
-                    } else if extension == "index" {
+                    } else if extension == utils::INDEX_EXTENSION {
                         let mut corresponding_log_path = entry.path();
-                        corresponding_log_path.set_extension("log");
+                        corresponding_log_path.set_extension(utils::LOG_EXTENSION);
                         if corresponding_log_path.is_file() {
                             if let Some(file_stem) = path.file_stem() {
                                 valid_segment_files.push(file_stem.to_str().unwrap().into());
@@ -176,17 +178,17 @@ impl Commitlog {
                         .to_str()
                         .unwrap();
                     //let base_file_name = path.to_str().unwrap();
-                    if extension == "log" {
+                    if extension == utils::LOG_EXTENSION {
                         if segment_map.contains_key(file_stem) {
                             valid_segments_found.push(file_stem.into())
                         } else {
-                            segment_map.insert(file_stem.into(), "log".to_string());
+                            segment_map.insert(file_stem.into(), utils::LOG_EXTENSION.to_string());
                         }
-                    } else if extension == "index" {
+                    } else if extension == utils::INDEX_EXTENSION {
                         if segment_map.contains_key(file_stem) {
                             valid_segments_found.push(file_stem.into())
                         } else {
-                            segment_map.insert(file_stem.into(), "index".to_string());
+                            segment_map.insert(file_stem.into(), utils::INDEX_EXTENSION.to_string());
                         }
                     } else {
                         warn!("extension not found {:?}", extension);
@@ -263,7 +265,7 @@ impl Commitlog {
      * Given an offset, find and read the value from the commitlog for the
      * segment that it is located in.
      */
-    pub fn read(&mut self, offset: usize) -> Result<Vec<u8>, String> {
+    pub fn read(&mut self, offset: usize) -> Result<Vec<u8>, CommitlogError> {
         //First check the current segment
         if usize::from(self.current_segment.starting_offset) <= offset {
             let search_offset = offset - usize::from(self.current_segment.starting_offset);
@@ -272,9 +274,9 @@ impl Commitlog {
                 Err(err) => {
                     let out_of_bounds = SegmentError::new("offset is out of bounds");
                     if err == out_of_bounds {
-                        return Err("Offset does not exist in the commitlog".to_string());
+                        return Err(CommitlogError::new("Offset does not exist in the commitlog"));
                     } else {
-                        panic!("unexpected error reached")
+                        return Err(CommitlogError::new("Unexpected error when reading commitlog"))
                     }
                 }
             };
@@ -302,15 +304,15 @@ impl Commitlog {
                 Err(err) => {
                     let out_of_bounds = SegmentError::new("offset is out of bounds");
                     if err == out_of_bounds {
-                        return Err("Offset does not exist in the commitlog".to_string());
+                        return Err(CommitlogError::new("Offset does not exist in the commitlog"));
                     } else {
-                        panic!("unexpected error reached")
+                        return Err(CommitlogError::new("Unexpected error when reading commitlog"))
                     }
                 }
             }
         } else {
             error!("offset {} does not exist in the commtlog", offset);
-            Err("Offset does not exist in the commitlog".to_string())
+            Err(CommitlogError::new("Offset does not exist in the commitlog"))
         }
     }
 
@@ -383,7 +385,7 @@ mod commitlog_tests {
         let mut cl =
             Commitlog::new(test_dir_path.clone(), 100, 1000).expect("Unable to create commitlog");
         let test_data = "producer1".as_bytes();
-        cl.append(test_data);
+        cl.append(test_data).expect("Unable to append message");
 
         let retrived_message = cl.read(0).expect("Unable to retrieve message");
         assert_eq!(test_data, &*retrived_message);
@@ -400,7 +402,7 @@ mod commitlog_tests {
         let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000).expect("Unable to create commitlog");
         let test_data = "message".as_bytes();
         for n in 0..10 {
-            let offset = cl.append(test_data);
+            let offset = cl.append(test_data).expect("Unable to append message");
             assert_eq!(n, offset);
         }
     }
@@ -419,7 +421,7 @@ mod commitlog_tests {
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
             let test_data = string_message.as_bytes();
-            let offset = cl.append(test_data);
+            let offset = cl.append(test_data).expect("Unable to append message");
             println!("{}", offset);
             assert_eq!(offset, i);
         }
@@ -446,7 +448,7 @@ mod commitlog_tests {
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
             let test_data = string_message.as_bytes();
-            cl.append(test_data);
+            cl.append(test_data).expect("Unable to append message");
         }
 
         let latest_cl_offset = cl.get_oldest_offset();
@@ -467,7 +469,7 @@ mod commitlog_tests {
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
             let test_data = string_message.as_bytes();
-            cl.append(test_data);
+            cl.append(test_data).expect("Unable to append message");
         }
 
         let latest_cl_offset = cl.get_latest_offset();

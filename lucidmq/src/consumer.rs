@@ -1,5 +1,7 @@
+use crate::lucidmq_errors::ConsumerError;
 use crate::topic::{Topic, ConsumerGroup};
-use log::info;
+use log::{error, info};
+use nolan::CommitlogError;
 use std::sync::atomic::Ordering;
 use std::sync::{Arc, RwLock};
 use std::thread;
@@ -26,7 +28,7 @@ impl Consumer {
             consumer_group: new_consumer_group,
             cb: callback,
         };
-        consumer.consumer_group_initialize();
+        consumer.consumer_group_initialize().unwrap();
         consumer
     }
 
@@ -34,9 +36,12 @@ impl Consumer {
      * Reads from the commitlog for a set amount of time and returns a vector is messages when complete. 
      * The offset where the starting read takes place is based off of the consumer group offset
      */
-    pub fn poll(&mut self, timeout: u64) -> Vec<Vec<u8>> {
+    pub fn poll(&mut self, timeout: u64) -> Result<Vec<Vec<u8>>, ConsumerError> {
         //Let's check if there are any new segments added.
-        self.topic.write().expect("Unable to get lock on consumer topic").commitlog.reload_segments();
+        self.topic.write().map_err(|e| {
+            error!("{}", e);
+            ConsumerError::new("Unable to get lock on consumer topic")
+        })?.commitlog.reload_segments();
         info!("polling for messages");
 
         let timeout_duration = Duration::from_millis(timeout);
@@ -47,20 +52,27 @@ impl Consumer {
         let mut elapsed_duration = start_time.elapsed();
         //let mut n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).expect("Unable to get offset");
         while timeout_duration > elapsed_duration {
-            let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).expect("Unable to get offset");
-            let mut topic = self.topic.write().expect("Unable to get lock on consumer topic");
+            let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).map_err(|e| {
+                error!("{}", e);
+                ConsumerError::new("Unable to get offset")
+            })?;
+            let mut topic = self.topic.write().map_err(|e| {
+                error!("{}", e);
+                ConsumerError::new("Unable to get lock on consumer topic")
+            })?;
             match topic.commitlog.read(n) {
                 Ok(buffer) => {
                     records.push(buffer);
                     self.update_consumer_group_offset();
                 }
                 Err(err) => {
-                    if err == "Offset does not exist in the commitlog" {
+                    let offset_dne_error = CommitlogError::new("Offset does not exist in the commitlog");
+                    if err == offset_dne_error {
                         topic.commitlog.reload_segments();
                         thread::sleep(ten_millis);
                         elapsed_duration = start_time.elapsed();
                     } else {
-                        panic!("Unexpected error found")
+                        return Err(ConsumerError::new("Error when reading commitlong"));
                     }
                 }
             };
@@ -68,7 +80,7 @@ impl Consumer {
         if !records.is_empty() {
             self.save_info();
         }
-        records
+        Ok(records)
     }
 
     /**
@@ -87,7 +99,8 @@ impl Consumer {
                     offset += 1;
                 }
                 Err(err) => {
-                    if err == "Offset does not exist in the commitlog" {
+                    let offset_dne_error = CommitlogError::new("Offset does not exist in the commitlog");
+                    if err == offset_dne_error {
                         break;
                     } else {
                         panic!("Unexpected error found")
@@ -118,16 +131,23 @@ impl Consumer {
      Verifies and fixes if the consumer group is set to something that is older than the oldest offset in the commitlog.
      If it is older, it will set it to the oldest possible offset.
      */
-    fn consumer_group_initialize(&mut self) {
-        let oldest_offset = self.topic.read().expect("Unable to get lock on consumer topic").commitlog.get_oldest_offset();
+    fn consumer_group_initialize(&mut self) -> Result<(), ConsumerError>{
+        let oldest_offset = self.topic.read().map_err(|e| {
+            error!("{}", e);
+            ConsumerError::new("Unable to get lock on consumer topic")
+        })?.commitlog.get_oldest_offset();
         let n = usize::try_from(self.consumer_group.offset.load(Ordering::SeqCst)).unwrap();
         if n < oldest_offset {
-            let new_consumer_group_offset: u32 = oldest_offset.try_into().unwrap();
+            let new_consumer_group_offset: u32 = oldest_offset.try_into().map_err(|e| {
+                error!("{}", e);
+                ConsumerError::new("Oldest offset does not map to a u32")
+            })?;
             self.consumer_group
                 .offset
                 .store(new_consumer_group_offset, Ordering::SeqCst);
             self.save_info();
         }
+        Ok(())
     }
 
     /**

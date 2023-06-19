@@ -1,6 +1,9 @@
 use std::path::Path;
 use crate::nolan_errors::SegmentError;
 
+pub const LOG_EXTENSION: &str = "log";
+pub const INDEX_EXTENSION: &str = "index";
+
 pub const LOG_SUFFIX: &str = ".log";
 pub const INDEX_SUFFIX: &str = ".index";
 

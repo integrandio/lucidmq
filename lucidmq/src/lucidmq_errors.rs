@@ -52,3 +52,55 @@ impl Error for BrokerError {
         &self.details
     }
 }
+
+//------------Consumer Error--------------------
+#[derive(Debug)]
+pub struct ConsumerError {
+    details: String,
+}
+
+impl ConsumerError {
+    pub fn new(msg: &str) -> ConsumerError {
+        ConsumerError {
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ConsumerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for ConsumerError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
+//------------Producer Error--------------------
+#[derive(Debug)]
+pub struct ProducerError {
+    details: String,
+}
+
+impl ProducerError {
+    pub fn new(msg: &str) -> ProducerError {
+        ProducerError {
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ProducerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for ProducerError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}

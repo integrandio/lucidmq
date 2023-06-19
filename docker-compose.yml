@@ -1,3 +1,4 @@
+# This docker compose file is solely used for running the integration tests
 version: "3.9"  # optional since v1.27.0
 services:
   lucidmq-server:

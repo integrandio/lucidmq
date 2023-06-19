@@ -8,3 +8,4 @@ mod virtual_segment;
 mod virtual_index;
 
 pub use commitlog::Commitlog;
+pub use nolan_errors::CommitlogError;
