@@ -123,7 +123,7 @@ class TestProducer:
         assert produce_request_result['offset'] == 0
 
 class TestConsumer:
-    def test_consumeer_1_message(self):
+    def test_consumer_1_message(self):
         topic_name = get_random_string(10)
         topic_manager = TopicManager(HOST, PORT)
         producer = Producer(HOST, PORT)
@@ -151,7 +151,7 @@ class TestConsumer:
         # Delete the topic to clean up
         topic_delete_result = topic_manager.delete_topic(topic_name)
 
-    def test_consumeer_10_message(self):
+    def test_consumer_10_message(self):
         topic_name = get_random_string(10)
         topic_manager = TopicManager(HOST, PORT)
         producer = Producer(HOST, PORT)
@@ -184,3 +184,12 @@ class TestConsumer:
     
         # Delete the topic to clean up
         topic_delete_result = topic_manager.delete_topic(topic_name)
+    
+    def test_consume_topic_dne(self):
+        topic_name = get_random_string(10)
+        consumer = Consumer(HOST, PORT, 100)
+        
+        consumer_request_result = consumer.consume(topic_name, "cg1")
+        assert consumer_request_result['success'] == False
+        assert consumer_request_result['topicName'] == topic_name
+

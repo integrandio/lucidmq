@@ -171,11 +171,11 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
         Ok(message_envelope::ProduceRequest(envelope_produce_request)) => {
             let produce_request = envelope_produce_request.expect("Unable to get produce request from envelope");
             let _messages = produce_request.get_messages().expect("Unable to get message from produce request");
-            for msg in _messages.into_iter() {
-                info!("KEY: {:?}, VALUE: {:?}, TIMESTAMP: {}", msg.get_key().unwrap(), msg.get_value().unwrap(), msg.get_timestamp());
-            }
-            let topic_name = produce_request.get_topic_name().expect("Unable to get topic name from produce request");
-            info!("{}", topic_name);
+            // for msg in _messages.into_iter() {
+            //     info!("KEY: {:?}, VALUE: {:?}, TIMESTAMP: {}", msg.get_key().unwrap(), msg.get_value().unwrap(), msg.get_timestamp());
+            // }
+            //let topic_name = produce_request.get_topic_name().expect("Unable to get topic name from produce request");
+            // info!("{}", topic_name);
             let mut message = TypedBuilder::<produce_request::Owned>::new_default();
             message.set_root(produce_request).unwrap();
             let typed_reader = TypedReader::from(message);

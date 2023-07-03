@@ -353,7 +353,10 @@ impl Broker {
                 }
                 Ok(new_produce_response(topic_name, last_offset.into(), true))
             }
-            None => Ok(new_produce_response(topic_name, 0, false)),
+            None => {
+                warn!("Topic {} does not exist", topic_name);
+                Ok(new_produce_response(topic_name, 0, false))
+            }
         }
     }
 

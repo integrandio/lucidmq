@@ -1,4 +1,4 @@
-use log::{debug};
+use log::debug;
 use nolan::Commitlog;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -52,20 +52,30 @@ struct DeserTopic {
 
 impl From<DeserTopic> for Topic {
     fn from(tmp: DeserTopic) -> Self {
-        let commitlog = nolan::Commitlog::new(tmp.directory.clone(), tmp.max_segment_size, tmp.max_topic_size).expect("Unable to create commitlog for topic");
+        let commitlog = nolan::Commitlog::new(
+            tmp.directory.clone(),
+            tmp.max_segment_size,
+            tmp.max_topic_size,
+        )
+        .expect("Unable to create commitlog for topic");
         Self {
             name: tmp.name,
             directory: tmp.directory,
             consumer_groups: tmp.consumer_groups,
             max_segment_size: tmp.max_segment_size,
             max_topic_size: tmp.max_topic_size,
-            commitlog: commitlog
+            commitlog: commitlog,
         }
     }
 }
 
 impl Topic {
-    pub fn new(topic_name: String, base_directory: String, max_segment_size: u64, max_topic_size: u64) -> Topic {
+    pub fn new(
+        topic_name: String,
+        base_directory: String,
+        max_segment_size: u64,
+        max_topic_size: u64,
+    ) -> Topic {
         debug!("Creating a new topic {}", topic_name);
         let path = Path::new(&base_directory);
         // Generate a random directory name
@@ -76,10 +86,15 @@ impl Topic {
             .collect();
         let new_path = &path.join(directory_name);
         let new_consumer_groups = Vec::new();
-        let new_commitlog = nolan::Commitlog::new(new_path
-            .to_str()
-            .expect("unable to convert to string")
-            .to_string(), max_segment_size, max_topic_size).expect("Unable to create commitlog for topic");
+        let new_commitlog = nolan::Commitlog::new(
+            new_path
+                .to_str()
+                .expect("unable to convert to string")
+                .to_string(),
+            max_segment_size,
+            max_topic_size,
+        )
+        .expect("Unable to create commitlog for topic");
         Topic {
             name: topic_name,
             directory: new_path
@@ -119,12 +134,15 @@ impl Topic {
     // }
 
     pub fn get_consumer_groups(&self) -> Vec<String> {
-        let cg_names = self.consumer_groups.iter().map(|x| x.name.clone()).collect();
+        let cg_names = self
+            .consumer_groups
+            .iter()
+            .map(|x| x.name.clone())
+            .collect();
         return cg_names;
     }
 
-    pub fn get_max_segment_size(&self) -> u64{
+    pub fn get_max_segment_size(&self) -> u64 {
         self.max_segment_size
     }
-
 }

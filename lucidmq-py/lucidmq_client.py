@@ -30,7 +30,6 @@ class Producer(LucidmqClient):
         self.send_message_bytes(msg)
         data = self.recieve_response()
         produce_response_obj = cap_helper.response_parser(data)
-        print(produce_response_obj)
         return produce_response_obj.to_dict()
     
     def close(self):

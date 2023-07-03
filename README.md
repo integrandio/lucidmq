@@ -57,13 +57,13 @@ For a client to interact with your LucidMQ server instance, utilize the LucidMQ-
 
 1. Build the base Docker image
 ```
-docker build -t lucidmq-base .
+docker build -t images/lucidmq-base .
 ```
 
 2. Build the docker images locally:
 
 ```
-docker build -f Lucidmq.Dockerfile -t lucidmq .
+docker build -f images/Lucidmq.Dockerfile -t lucidmq .
 ```
 
 2. Run the Docker Container
