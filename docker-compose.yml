@@ -5,7 +5,7 @@ services:
     image: lucidmq:latest
     build: 
       context: .
-      dockerfile: Lucidmq.Dockerfile
+      dockerfile: images/Lucidmq.Dockerfile
     environment:
       - HOST=0.0.0.0
     ports:
@@ -16,7 +16,7 @@ services:
     image: lucidmq-test
     build: 
       context: .
-      dockerfile: LucidmqIntegration.Dockerfile
+      dockerfile: images/LucidmqIntegration.Dockerfile
     environment:
       - LUCIDMQ_SERVER_HOST=lucidmq-server
     depends_on:
