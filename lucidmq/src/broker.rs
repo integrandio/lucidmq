@@ -409,3 +409,30 @@ impl Broker {
             .expect("Unable to write to file");
     }
 }
+
+#[cfg(test)]
+mod broker_tests {
+    use crate::broker::Broker;
+    use tempdir::TempDir;
+    use std::path::Path;
+
+    #[test]
+    fn test_new_broker() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let broker = Broker::new(String::from(tmp_dir_string)).expect("unable to create new broker");
+        assert!(Path::new(&broker.base_directory).is_dir());
+    }
+    // Tests to write:
+    // - happy path broker, directory and lucidmq meta are created
+    // - handle run, send message of each kind, verify the response including invalid
+    // - topic handler function, try each kind
+    // - producer handler
+    // - consumer handler
+    // - check topics
+    // - test flush
+
+}

@@ -34,3 +34,65 @@ impl Producer {
         self.topic.read().unwrap().name.clone()
     }
 }
+
+#[cfg(test)]
+mod producer_tests {
+    use std::sync::{Arc, RwLock};
+    use crate::topic::Topic;
+    use crate::producer::Producer;
+    use tempdir::TempDir;
+
+    #[test]
+    fn test_producer_produce_bytes() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let mut producer = Producer::new(locked_topic.clone());
+        let bytes = "hello".as_bytes();
+        // check the offset
+        let offset = producer.produce_bytes(bytes).expect("Unable to produce bytes");
+        assert!(offset == 0);
+        // check the message provided
+        let msg = locked_topic.write().expect("unable to get lock").commitlog.read(0).expect("unable to read commitlog");
+        assert!(bytes == &msg);
+    }
+
+    #[test]
+    fn test_producer_produce_mutiple_bytes() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let mut producer = Producer::new(locked_topic.clone());
+        for i in 0..10 {
+            let string_message = format!("hellow{}", i);
+            let test_data = string_message.as_bytes();
+            // check the offset
+            let offset = producer.produce_bytes(test_data).expect("Unable to produce bytes");
+            assert!(offset == i);
+            // check the message provided
+            let msg = locked_topic.write().expect("unable to get lock").commitlog.read(i.into()).expect("unable to read commitlog");
+            assert!(test_data == &msg);
+        }
+    }
+
+}

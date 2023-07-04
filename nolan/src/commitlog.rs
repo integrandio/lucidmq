@@ -369,9 +369,8 @@ mod commitlog_tests {
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
-        Commitlog::new(test_dir_path.clone(), 100, 1000).expect("Unable to create commitlog");
-        assert!(Path::new(&test_dir_path).is_dir());
+        let commitlog = Commitlog::new(String::from(tmp_dir_string), 100, 1000).expect("Unable to create commitlog");
+        assert!(Path::new(&commitlog.directory).is_dir());
     }
 
     #[test]

@@ -162,3 +162,12 @@ impl Consumer {
         (self.cb)()
     }
 }
+
+// #[cfg(test)]
+// mod consumer_tests {
+//     // Tests to write:
+//     // - test creation of consumer
+//     // - handle consuming 1 message
+//     // - hanlde consuming multiple messages
+
+// }

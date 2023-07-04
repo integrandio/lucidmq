@@ -95,7 +95,7 @@ class TestProducer:
         topic_delete_result = topic_manager.delete_topic(topic_name)
     
     # Run this test so we attempt a split
-    def test_produce_20_large_message(self):
+    def test_produce_30_large_message(self):
         topic_name = get_random_string(10)
         topic_manager = TopicManager(HOST, PORT)
         producer = Producer(HOST, PORT)
@@ -184,6 +184,23 @@ class TestConsumer:
     
         # Delete the topic to clean up
         topic_delete_result = topic_manager.delete_topic(topic_name)
+
+    def test_consumer_no_message(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        consumer = Consumer(HOST, PORT, 100)
+        # Create a topic to set up
+        topic_create_result = topic_manager.create_topic(topic_name)
+
+        consumer_request_result = consumer.consume(topic_name, "cg1")
+
+        # Check the wraper around consumer request
+        assert consumer_request_result['success'] == False
+        assert consumer_request_result['topicName'] == topic_name
+        assert len(consumer_request_result['messages']) == 0
+    
+        # Delete the topic to clean up
+        topic_delete_result = topic_manager.delete_topic(topic_name)
     
     def test_consume_topic_dne(self):
         topic_name = get_random_string(10)
@@ -192,4 +209,37 @@ class TestConsumer:
         consumer_request_result = consumer.consume(topic_name, "cg1")
         assert consumer_request_result['success'] == False
         assert consumer_request_result['topicName'] == topic_name
+    
+    def test_consumer_messages_already_consumed(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        producer = Producer(HOST, PORT)
+        consumer0 = Consumer(HOST, PORT, 100)
+        consumer1 = Consumer(HOST, PORT, 100)
+        consumer_group = "cg1"
+        # Create a topic to set up
+        topic_create_result = topic_manager.create_topic(topic_name)
 
+        key = b'key'
+        value = b'value'
+        # Produce message to our topic
+        produce_request_result = producer.produce(topic_name, key, value)
+
+        consumer_request_result = consumer0.consume(topic_name, consumer_group)
+
+        # Check the wraper around consumer request
+        assert consumer_request_result['success'] == True
+        assert consumer_request_result['topicName'] == topic_name
+        assert len(consumer_request_result['messages']) == 1
+
+        # Check the message itself
+        message = consumer_request_result['messages'][0]
+        assert message['key'] == key
+        assert message['value'] == value
+
+        consumer_request_result = consumer1.consume(topic_name, consumer_group)
+
+        # Check the wraper around consumer request
+        assert consumer_request_result['success'] == False
+        assert consumer_request_result['topicName'] == topic_name
+        assert len(consumer_request_result['messages']) == 0
