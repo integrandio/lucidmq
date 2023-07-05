@@ -21,7 +21,7 @@ impl Producer {
         Ok(written_offset)
     }
 
-    pub fn _produce_bytes_vector(&mut self, bytes_vector: Vec<&[u8]>) -> u16 {
+    pub fn _produce_bytes_vector(&mut self, bytes_vector: Vec<Vec<u8>>) -> u16 {
         let mut last_offset = 0;
         let commitlog = &mut self.topic.write().unwrap().commitlog;
         for bytes in bytes_vector {
@@ -92,6 +92,40 @@ mod producer_tests {
             // check the message provided
             let msg = locked_topic.write().expect("unable to get lock").commitlog.read(i.into()).expect("unable to read commitlog");
             assert!(test_data == &msg);
+        }
+    }
+
+    #[test]
+    fn test_producer_produce_bytes_vector() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let mut producer = Producer::new(locked_topic.clone());
+        let mut msg_vec: Vec<Vec<u8>>  = Vec::new();
+        for i in 0..10 {
+            let string_message = format!("hellow{}", i);
+            let test_data = string_message.as_bytes().to_vec();
+            msg_vec.push(test_data);
+        }
+        println!("{}", msg_vec.len());
+        // check the offset
+        let offset = producer._produce_bytes_vector(msg_vec.clone());
+        let thin= u16::try_from(msg_vec.len()-1).expect("Unable to convert u16");
+        assert!(offset == thin);
+        for (i, msg) in msg_vec.iter().enumerate() {
+            // check the message provided
+            let commitlog_msg = locked_topic.write().expect("unable to get lock").commitlog.read(i.into()).expect("unable to read commitlog");
+            assert!(&commitlog_msg == msg);
         }
     }
 

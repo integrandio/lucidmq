@@ -414,7 +414,7 @@ impl Broker {
 mod broker_tests {
     use crate::broker::Broker;
     use tempdir::TempDir;
-    use std::path::Path;
+    use std::{path::Path};
 
     #[test]
     fn test_new_broker() {

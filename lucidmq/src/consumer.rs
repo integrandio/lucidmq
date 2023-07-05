@@ -163,11 +163,122 @@ impl Consumer {
     }
 }
 
-// #[cfg(test)]
-// mod consumer_tests {
-//     // Tests to write:
-//     // - test creation of consumer
-//     // - handle consuming 1 message
-//     // - hanlde consuming multiple messages
+#[cfg(test)]
+mod consumer_tests {
+    use std::sync::atomic::Ordering;
+    use std::sync::{Arc, RwLock};
+    use crate::topic::{Topic, ConsumerGroup};
+    use crate::consumer::Consumer;
+    use tempdir::TempDir;
 
-// }
+    fn dummy_flush() {}
+
+    #[test]
+    fn test_consumer_cg_initialization() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let mut topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+        let bytes = "hello".as_bytes();
+        topic.commitlog.append(bytes).expect("unable to append to commitlog");
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        consumer.consumer_group_initialize().expect("Unable to init cg");
+
+        assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 0);
+    }
+
+    #[test]
+    fn test_consumer_cg_update_offset() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let mut topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+        let bytes = "hello".as_bytes();
+        topic.commitlog.append(bytes).expect("unable to append to commitlog");
+        
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        // Initialize to offset of 0
+        consumer.consumer_group_initialize().expect("Unable to init cg");
+        // Bump the cg by 1
+        consumer.update_consumer_group_offset();
+        assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 1);
+    }
+
+    #[test]
+    fn test_consumer_consumr_msg() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let mut topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
+        let bytes = "hello".as_bytes();
+        topic.commitlog.append(bytes).expect("unable to append to commitlog");
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+
+        let msgs = consumer.poll(10).expect("unable to poll");
+        assert!(bytes == &msgs[0]);
+    }
+
+    #[test]
+    fn test_consumer_consumr_vector() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let mut topic = Topic::new(
+            "another_test_topic".to_string(),
+            String::from(tmp_dir_string),
+            1000,
+            10000,
+        );
+        let mut msg_vec: Vec<Vec<u8>> = Vec::new();
+        for i in 0..10 {
+            let string_message = format!("hello{}", i);
+            topic.commitlog.append(string_message.as_bytes()).expect("unable to append to commitlog");
+            msg_vec.push(string_message.as_bytes().to_vec());
+        }
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+
+        let consumer_msgs = consumer.poll(10).expect("unable to poll");
+        for (i, msg) in msg_vec.iter().enumerate() {
+            assert!(msg == &consumer_msgs[i]);
+        }
+    }
+    // Tests to write:
+    // - test creation of consumer
+    // - handle consuming 1 message
+    // - hanlde consuming multiple messages
+
+}
