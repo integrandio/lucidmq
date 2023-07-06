@@ -16,7 +16,7 @@ impl Producer {
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> Result<u16, ProducerError> {
         let written_offset = self.topic.write().unwrap().commitlog.append(&bytes).map_err(|e| {
             error!("{}", e);
-            ProducerError::new("Oldest offset does not map to a u32")
+            ProducerError::new("Unable to produce message to the commitlog")
         })?;
         Ok(written_offset)
     }
@@ -66,6 +66,27 @@ mod producer_tests {
         let msg = locked_topic.write().expect("unable to get lock").commitlog.read(0).expect("unable to read commitlog");
         assert!(bytes == &msg);
     }
+
+// This test overflows the stack, we have an issue in nolan
+    // #[test]
+    // fn test_producer_produce_bytes_greater_than_segment_size() {
+    //     let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+    //     let tmp_dir_string = tmp_dir
+    //         .path()
+    //         .to_str()
+    //         .expect("Unable to conver path to string");
+    //     let topic = Topic::new(
+    //         "test_topic".to_string(),
+    //         String::from(tmp_dir_string),
+    //         10,
+    //         100,
+    //     );
+
+    //     let locked_topic = Arc::new(RwLock::new(topic));
+    //     let mut producer = Producer::new(locked_topic.clone());
+    //     let bytes: [u8; 20] = [0; 20];
+    //     let offset = producer.produce_bytes(&bytes).expect("Unable to produce bytes");
+    // }
 
     #[test]
     fn test_producer_produce_mutiple_bytes() {
@@ -117,7 +138,6 @@ mod producer_tests {
             let test_data = string_message.as_bytes().to_vec();
             msg_vec.push(test_data);
         }
-        println!("{}", msg_vec.len());
         // check the offset
         let offset = producer._produce_bytes_vector(msg_vec.clone());
         let thin= u16::try_from(msg_vec.len()-1).expect("Unable to convert u16");

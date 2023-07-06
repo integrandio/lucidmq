@@ -197,6 +197,33 @@ mod consumer_tests {
         assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 0);
     }
 
+
+    #[test]
+    fn test_consumer_cg_initialization_many_messages() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let mut topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            40,
+            200,
+        );
+        // TODO: the math here is fuzzy, let's reason about why at 14 iterations of 20 bytes = 280 fits into a topic of 200 size and segment size of 40
+        for _i in 0..15 {
+            let bytes: [u8; 20] = [0; 20];
+            topic.commitlog.append(&bytes).expect("unable to append to commitlog");
+        }
+
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        consumer.consumer_group_initialize().expect("Unable to init cg");
+        assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 2);
+    }
+
     #[test]
     fn test_consumer_cg_update_offset() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
@@ -224,7 +251,7 @@ mod consumer_tests {
     }
 
     #[test]
-    fn test_consumer_consumr_msg() {
+    fn test_consumer_consume_msg() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
         let tmp_dir_string = tmp_dir
             .path()
@@ -248,7 +275,7 @@ mod consumer_tests {
     }
 
     #[test]
-    fn test_consumer_consumr_vector() {
+    fn test_consumer_consume_vector() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
         let tmp_dir_string = tmp_dir
             .path()
@@ -276,9 +303,5 @@ mod consumer_tests {
             assert!(msg == &consumer_msgs[i]);
         }
     }
-    // Tests to write:
-    // - test creation of consumer
-    // - handle consuming 1 message
-    // - hanlde consuming multiple messages
 
 }
