@@ -253,6 +253,7 @@ impl Segment {
 mod segment_tests {
     use std::path::Path;
     use tempdir::TempDir;
+    use crate::nolan_errors::SegmentError;
     use crate::virtual_segment::VirtualSegment;
     use crate::utils;
     use crate::segment::Segment;
@@ -295,6 +296,23 @@ mod segment_tests {
         let result = segment.read_at(0).expect("Unable to read at offset");
 
         assert!(result.iter().eq(message.iter()));
+    }
+
+    #[test]
+    fn test_read_at_offset_dne() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let message = "hello".as_bytes();
+        let segment_base = create_segment_file(test_dir_path, message);
+        let mut segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+
+        let segment_error = segment.read_at(1).unwrap_err();
+        let wanted_error =
+            SegmentError::new("offset is out of bounds");
+        assert_eq!(wanted_error, segment_error);
     }
 
     #[test]

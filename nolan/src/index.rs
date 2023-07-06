@@ -81,18 +81,15 @@ impl Index {
         let mut circut_break: bool = false;
         loop {
             let mut buffer = [0; 8];
-            //TODO: error handle this correctly
-            self.index_file
-                .read_exact(&mut buffer)
-                .unwrap_or_else(|error| {
+            match self.index_file.read_exact(&mut buffer) {
+                Ok(_) => {},
+                Err(error) => {
                     if error.kind() == ErrorKind::UnexpectedEof {
-                        circut_break = true;
-                    } else {
-                        // error!{"{}", error}
-                        // return IndexError::new("unable seek to begining of the index");
-                        panic!("{}", error)
-                    }
-                });
+                    circut_break = true;
+                } else {
+                    return Err(IndexError::new("unable seek to begining of the index"));
+                }},
+            }
             if circut_break {
                 break;
             }
@@ -160,12 +157,11 @@ impl Index {
         &self,
         offset: usize,
     ) -> Result<(u64, usize), IndexError> {
-        if offset > self.entries.len() {
+        if offset >= self.entries.len() {
             return Err(IndexError::new("offset is greater than entries length"));
         }
         let entry = self.entries[offset];
         let start_offset: u64 = entry.start.into();
-        //TODO: error handle this correctly
         let total_bytes: usize = usize::try_from(entry.total).map_err(|e| {
             error!("{}", e);
             IndexError::new("unable to convert from u32 to usize")
@@ -181,6 +177,7 @@ mod index_tests {
     use tempdir::TempDir;
     use rand::{distributions::Alphanumeric, Rng}; // 0.8
     use crate::index::Index;
+    use crate::nolan_errors::IndexError;
     use crate::utils;
     use crate::virtual_segment::VirtualSegment;
 
@@ -244,6 +241,25 @@ mod index_tests {
         let (start, total) = index.return_entry_details_by_offset(0).expect("Unable to get entry details");
         assert!(start == 0);
         assert!(total == message.len());
+    }
+
+    #[test]
+    fn return_entry_details_by_offset_dne() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        let message = "hello";
+        let index_file_name = create_index_file(test_dir_path, message.as_bytes());
+
+        let mut index = Index::new(index_file_name).expect("Error creating index");
+        index.load_index().expect("unable to load index");
+
+        let index_error = index.return_entry_details_by_offset(1).unwrap_err();
+        let wanted_error =
+            IndexError::new("offset is greater than entries length");
+        assert_eq!(wanted_error, index_error);
     }
 
 }

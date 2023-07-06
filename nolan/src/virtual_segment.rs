@@ -263,9 +263,9 @@ mod virtual_segment_tests {
         vs.write(&bytes).unwrap();
 
         let segment_error = vs.read_at(1).unwrap_err();
-        let want =
+        let wanted_error =
             SegmentError::new("offset is out of bounds");
-        assert_eq!(want, segment_error);
+        assert_eq!(wanted_error, segment_error);
     }
 
     #[test]
@@ -282,5 +282,17 @@ mod virtual_segment_tests {
         vs.flush().expect("Unable to flush");
 
         assert!(Path::new(&vs.full_log_path).exists());
+    }
+
+    #[test]
+    fn test_flush_dir_dne() {
+        let mut vs = VirtualSegment::new("test", 100, 0);
+        let data = "hellos".as_bytes();
+        vs.write(data)
+            .expect("unable to write data to virtual segment");
+        let segment_error = vs.flush().unwrap_err();
+        let wanted_error =
+            SegmentError::new("unable to open log file for flushing");
+        assert_eq!(wanted_error, segment_error);
     }
 }

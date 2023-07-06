@@ -145,6 +145,10 @@ impl VirtualIndex {
 
 #[cfg(test)]
 mod virtual_index_tests {
+    use std::path::Path;
+
+    use tempdir::TempDir;
+
     use crate::virtual_index::VirtualIndex;
     use crate::nolan_errors::IndexError;
     #[test]
@@ -212,6 +216,52 @@ mod virtual_index_tests {
 
         let index_error = test_index.return_entry_details_by_offset(1).unwrap_err();
         let wanted_error: IndexError = IndexError::new("offset requested is greater than the entries legnth");
+        assert_eq!(wanted_error, index_error);
+    }
+
+    #[test]
+    fn test_flush() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let test_dir_path = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to convert path to string");
+        
+        let index_file_name = format!("{}/test.index",test_dir_path);
+
+        let mut test_index = VirtualIndex::new(index_file_name);
+
+        let start_position = 0;
+        let total_bytes = 10;
+        test_index
+            .add_entry(start_position, total_bytes)
+            .expect("Unable to add entry");
+        test_index.flush().expect("Unable to flush index");
+
+        assert!(Path::new(&test_index.full_index_file_path).exists());
+    }
+
+    #[test]
+    fn test_flush_dir_dne() {
+        let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
+
+        let start_position = 0;
+        let total_bytes = 10;
+        test_index
+            .add_entry(start_position, total_bytes)
+            .expect("Unable to add entry");
+        
+        let index_error = test_index.flush().unwrap_err();
+        let wanted_error: IndexError = IndexError::new("Unable to create and open index file");
+        assert_eq!(wanted_error, index_error);
+
+    }
+
+    #[test]
+    fn test_load_dir_dne() {
+        let mut test_index = VirtualIndex::new(String::from("test_dir/test.index"));
+        let index_error = test_index.load_index().unwrap_err();
+        let wanted_error: IndexError = IndexError::new("Unable to create and open index file");
         assert_eq!(wanted_error, index_error);
     }
 }
