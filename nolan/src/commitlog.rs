@@ -358,7 +358,7 @@ impl Commitlog {
 
 #[cfg(test)]
 mod commitlog_tests {
-    use crate::commitlog::Commitlog;
+    use crate::{commitlog::Commitlog, CommitlogError};
     use std::path::Path;
     use tempdir::TempDir;
 
@@ -473,5 +473,22 @@ mod commitlog_tests {
 
         let latest_cl_offset = cl.get_latest_offset();
         assert_eq!(number_of_iterations, latest_cl_offset);
+    }
+
+    #[test]
+    fn test_append_message_bigger_than_segment() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let test_dir_path = String::from(tmp_dir_string);
+        let mut cl =
+            Commitlog::new(test_dir_path.clone(), 10, 100).expect("Unable to create commitlog");
+        let bytes: [u8; 11] = [0; 11];
+        let commitlog_error = cl.append(&bytes).unwrap_err();
+        let wanted_error =
+            CommitlogError::new("Unknown error when writing occured");
+        assert_eq!(wanted_error, commitlog_error);
     }
 }

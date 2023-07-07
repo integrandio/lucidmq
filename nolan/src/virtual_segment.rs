@@ -119,6 +119,9 @@ impl VirtualSegment {
      * Return the offset in the segment that was written to.
      */
     pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
+        if data.len() > self.max_bytes.try_into().unwrap() {
+            return Err(SegmentError::new("Data to write is greater than the allowed max segment size"));
+        }
         let computed_size_bytes = u64::try_from(self.contents.get_ref().len() + data.len())
             .map_err(|e| {
                 error!("{}", e);
@@ -221,7 +224,7 @@ mod virtual_segment_tests {
         let offset = vs
             .write(data)
             .expect("unable to write data to virtual segment");
-
+        assert_eq!(0, offset.into());
         let retrieve_data = vs
             .read_at(offset.into())
             .expect("Failed to get message from virtual segment");
@@ -252,6 +255,17 @@ mod virtual_segment_tests {
         let bytes: [u8; 11] = [0; 11];
         let segment_error = vs.write(&bytes).unwrap_err();
         let want =
+            SegmentError::new("Data to write is greater than the allowed max segment size");
+        assert_eq!(want, segment_error);
+    }
+
+    #[test]
+    fn test_multi_messages_greater_than_segment() {
+        let mut vs = VirtualSegment::new("test_dir", 10, 0);
+        let bytes: [u8; 6] = [0; 6];
+        vs.write(&bytes).unwrap();
+        let segment_error = vs.write(&bytes).unwrap_err();
+        let want =
             SegmentError::new("Write not possible. Segment log would be greater than max bytes");
         assert_eq!(want, segment_error);
     }
@@ -263,6 +277,18 @@ mod virtual_segment_tests {
         vs.write(&bytes).unwrap();
 
         let segment_error = vs.read_at(1).unwrap_err();
+        let wanted_error =
+            SegmentError::new("offset is out of bounds");
+        assert_eq!(wanted_error, segment_error);
+    }
+
+    #[test]
+    fn test_offset_less_than_segment() {
+        let mut vs = VirtualSegment::new("test_dir", 100, 1);
+        let bytes: [u8; 10] = [0; 10];
+        vs.write(&bytes).unwrap();
+
+        let segment_error = vs.read_at(0).unwrap_err();
         let wanted_error =
             SegmentError::new("offset is out of bounds");
         assert_eq!(wanted_error, segment_error);

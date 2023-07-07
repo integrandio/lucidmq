@@ -1,4 +1,4 @@
-use log::{error};
+use log::error;
 use std::fs;
 use std::fs::File;
 use std::fs::OpenOptions;
