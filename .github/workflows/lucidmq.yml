@@ -24,18 +24,17 @@ jobs:
         password: ${{  secrets.DOCKER_REGISTRY_PASSWORD }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-      - run: cd lucidmq
+        uses: actions/checkout@v3
       - name: LucidMQ Build
-        run: cargo build --verbose
+        run: cargo test --manifest-path=lucidmq/Cargo.toml --verbose
       - name: LucidMQ Test
-        run: cargo test --verbose
+        run: cargo test --manifest-path=lucidmq/Cargo.toml --verbose
   integration_tests:
     name: LucidMQ - Integration Tests
     runs-on: ubuntu-latest
     steps: 
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
       - name: Registry Login
         uses: docker/login-action@v2
         with:

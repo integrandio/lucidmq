@@ -15,5 +15,5 @@ $ pip3 -r install requirements.txt
 
 ## How to Run integration tests
 ```
-pytest
+PYTHONPATH=src pytest
 ```

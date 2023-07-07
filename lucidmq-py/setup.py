@@ -6,6 +6,12 @@ setup(
     description='LucidMQ Client code',
     url='https://github.com/lucidmq/lucidmq',
     license='MIT',
-    packages=['lucidmq-py'],
+    #packages=['lucidmq-py'],
+    classifiers=[
+        "Programming Language :: Python :: 3",
+        "License :: OSI Approved :: MIT License"
+    ],
     install_requires=['pycapnp'],
+    python_requires='>=3.8',
+    include_package_data=True
 )

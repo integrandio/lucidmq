@@ -5,3 +5,5 @@
 
 # Generated cap n proto does not need to bee checked in
 **/*_capnp.rs
+
+lucidglue

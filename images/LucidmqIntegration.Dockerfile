@@ -9,4 +9,5 @@ COPY lucidmq-py /build/lucidmq-py
 WORKDIR /build/lucidmq-py
 RUN pip3 install pycapnp && \
     pip3 install pytest
+ENV PYTHONPATH=src
 CMD ["pytest"]

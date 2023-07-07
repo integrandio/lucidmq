@@ -22,14 +22,14 @@ impl Consumer {
         consumer_topic: Arc<RwLock<Topic>>,
         new_consumer_group: Arc<ConsumerGroup>,
         callback: Box<dyn Fn()>,
-    ) -> Consumer {
+    ) -> Result<Consumer, ConsumerError> {
         let mut consumer = Consumer {
             topic: consumer_topic,
             consumer_group: new_consumer_group,
             cb: callback,
         };
-        consumer.consumer_group_initialize().unwrap();
-        consumer
+        consumer.consumer_group_initialize()?;
+        Ok(consumer)
     }
 
     /**
@@ -191,7 +191,7 @@ mod consumer_tests {
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
-        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush())).unwrap();
         consumer.consumer_group_initialize().expect("Unable to init cg");
 
         assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 0);
@@ -219,7 +219,7 @@ mod consumer_tests {
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
-        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush())).unwrap();
         consumer.consumer_group_initialize().expect("Unable to init cg");
         assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 2);
     }
@@ -242,7 +242,7 @@ mod consumer_tests {
         
         let locked_topic = Arc::new(RwLock::new(topic));
         let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
-        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush())).unwrap();
         // Initialize to offset of 0
         consumer.consumer_group_initialize().expect("Unable to init cg");
         // Bump the cg by 1
@@ -268,7 +268,7 @@ mod consumer_tests {
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
-        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush())).unwrap();
 
         let msgs = consumer.poll(10).expect("unable to poll");
         assert!(bytes == &msgs[0]);
@@ -296,7 +296,7 @@ mod consumer_tests {
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let cg: Arc<ConsumerGroup> = Arc::new(ConsumerGroup::new("testcg"));
-        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush()));
+        let mut consumer = Consumer::new(locked_topic, cg, Box::new(move || dummy_flush())).unwrap();
 
         let consumer_msgs = consumer.poll(10).expect("unable to poll");
         for (i, msg) in msg_vec.iter().enumerate() {

@@ -1,23 +1,20 @@
-use log::{info, error};
-use std::io;
-use tokio::sync::Mutex;
-use std::{net::SocketAddr, sync::Arc, collections::HashMap};
-use rand::{thread_rng, Rng};
+use log::{error, info};
 use rand::distributions::Alphanumeric;
+use rand::{thread_rng, Rng};
+use std::io;
+use std::{collections::HashMap, net::SocketAddr, sync::Arc};
+use tokio::sync::Mutex;
 
 use crate::cap_n_proto_helper::parse_request;
 use crate::types::Command;
 
-use tokio::{
-    net::{TcpListener, TcpStream,
-        tcp::{
-            OwnedReadHalf,
-            OwnedWriteHalf
-        }}
+use tokio::net::{
+    tcp::{OwnedReadHalf, OwnedWriteHalf},
+    TcpListener, TcpStream,
 };
 
-use crate::{types::{SenderType, RecieverType }};
 use crate::lucidmq_errors::ServerError;
+use crate::types::{RecieverType, SenderType};
 
 type PeerMap = Arc<Mutex<HashMap<String, OwnedWriteHalf>>>;
 
@@ -25,21 +22,26 @@ pub struct LucidTcpServer {
     peer_map: PeerMap,
     address: SocketAddr,
     sender: SenderType,
-    reciever: RecieverType
+    reciever: RecieverType,
 }
 
 impl LucidTcpServer {
-    pub fn new(host: &str, port: &str, sender: SenderType, reciever: RecieverType) -> Result<LucidTcpServer, ServerError> {
+    pub fn new(
+        host: &str,
+        port: &str,
+        sender: SenderType,
+        reciever: RecieverType,
+    ) -> Result<LucidTcpServer, ServerError> {
         let addr_string = format!("{}:{}", host, port);
         let addr = addr_string.parse().map_err(|e| {
             error!("{}", e);
             ServerError::new("Unable to parse host string and port into socketaddress")
         })?;
-        Ok(LucidTcpServer { 
+        Ok(LucidTcpServer {
             peer_map: PeerMap::new(Mutex::new(HashMap::new())),
             address: addr,
             sender: sender,
-            reciever: reciever
+            reciever: reciever,
         })
     }
 
@@ -52,13 +54,10 @@ impl LucidTcpServer {
         tokio::spawn(async move {
             handle_responses(self.reciever, arc_peer_map).await;
         });
-            
+
         loop {
             let (stream, _) = listener.accept().await.unwrap();
-            info!(
-                "connection accepted: addr={}",
-                stream.peer_addr().unwrap()
-            );
+            info!("connection accepted: addr={}", stream.peer_addr().unwrap());
             let cloned_sender = self.sender.clone();
             let arc_peer_map = Arc::new(self.peer_map.clone());
             tokio::spawn(async move {
@@ -90,7 +89,7 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
             Ok(_total) => {
                 let message_size = u16::from_le_bytes(buf);
                 message_size
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
             }
@@ -106,7 +105,7 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
         match message_bytes_read {
             Ok(_total) => {
                 // info!("Second Bytes recieved {:?} size {}", message_buff, total);
-            },
+            }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
             }
@@ -125,7 +124,10 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
         let id;
         let response_message: Vec<u8>;
         match command {
-            Command::Response { conn_id, capmessagedata } => {
+            Command::Response {
+                conn_id,
+                capmessagedata,
+            } => {
                 response_message = capmessagedata;
                 id = conn_id;
             }
@@ -138,10 +140,12 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
 
         match wing.get(&id) {
             Some(outgoing) => {
-                outgoing.try_write(&response_message).unwrap_or_else(|error| {
-                    error!("Unable to write to tcp stream: {:?}", error);
-                    0
-                });
+                outgoing
+                    .try_write(&response_message)
+                    .unwrap_or_else(|error| {
+                        error!("Unable to write to tcp stream: {:?}", error);
+                        0
+                    });
             }
             None => {
                 error!("Unable to find connection key: {}", &id);

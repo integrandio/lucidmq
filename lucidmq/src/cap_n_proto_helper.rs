@@ -1,10 +1,8 @@
 use capnp::message::{Builder, ReaderOptions, TypedReader, TypedBuilder};
-use capnp::serialize::{self};
-use log::{info};
-
+use capnp::serialize;
+use log::info;
 use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request, message};
-
-use crate::types::{Command};
+use crate::types::Command;
 
 pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
