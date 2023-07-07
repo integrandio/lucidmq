@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 
 //------------Server Error--------------------
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ServerError {
     details: String,
 }
@@ -28,7 +28,7 @@ impl Error for ServerError {
 }
 
 //------------Broker Error--------------------
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct BrokerError {
     details: String,
 }
@@ -54,7 +54,7 @@ impl Error for BrokerError {
 }
 
 //------------Consumer Error--------------------
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ConsumerError {
     details: String,
 }
@@ -80,7 +80,7 @@ impl Error for ConsumerError {
 }
 
 //------------Producer Error--------------------
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct ProducerError {
     details: String,
 }

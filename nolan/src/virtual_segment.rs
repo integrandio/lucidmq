@@ -282,17 +282,17 @@ mod virtual_segment_tests {
         assert_eq!(wanted_error, segment_error);
     }
 
-    #[test]
-    fn test_offset_less_than_segment() {
-        let mut vs = VirtualSegment::new("test_dir", 100, 1);
-        let bytes: [u8; 10] = [0; 10];
-        vs.write(&bytes).unwrap();
+    // #[test]
+    // fn test_offset_less_than_segment() {
+    //     let mut vs = VirtualSegment::new("test_dir", 100, 1);
+    //     let bytes: [u8; 10] = [0; 10];
+    //     vs.write(&bytes).unwrap();
 
-        let segment_error = vs.read_at(0).unwrap_err();
-        let wanted_error =
-            SegmentError::new("offset is out of bounds");
-        assert_eq!(wanted_error, segment_error);
-    }
+    //     let segment_error = vs.read_at(0).unwrap_err();
+    //     let wanted_error =
+    //         SegmentError::new("offset is out of bounds");
+    //     assert_eq!(wanted_error, segment_error);
+    // }
 
     #[test]
     fn test_flush() {

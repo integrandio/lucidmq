@@ -1,5 +1,5 @@
 use crate::{topic::Topic, lucidmq_errors::ProducerError};
-use log::{error};
+use log::error;
 use std::sync::{Arc, RwLock};
 
 pub struct Producer {
@@ -38,6 +38,7 @@ impl Producer {
 #[cfg(test)]
 mod producer_tests {
     use std::sync::{Arc, RwLock};
+    use crate::lucidmq_errors::ProducerError;
     use crate::topic::Topic;
     use crate::producer::Producer;
     use tempdir::TempDir;
@@ -67,26 +68,28 @@ mod producer_tests {
         assert!(bytes == &msg);
     }
 
-// This test overflows the stack, we have an issue in nolan
-    // #[test]
-    // fn test_producer_produce_bytes_greater_than_segment_size() {
-    //     let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-    //     let tmp_dir_string = tmp_dir
-    //         .path()
-    //         .to_str()
-    //         .expect("Unable to conver path to string");
-    //     let topic = Topic::new(
-    //         "test_topic".to_string(),
-    //         String::from(tmp_dir_string),
-    //         10,
-    //         100,
-    //     );
+    #[test]
+    fn test_producer_produce_bytes_greater_than_segment_size() {
+        let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
+        let tmp_dir_string = tmp_dir
+            .path()
+            .to_str()
+            .expect("Unable to conver path to string");
+        let topic = Topic::new(
+            "test_topic".to_string(),
+            String::from(tmp_dir_string),
+            10,
+            100,
+        );
 
-    //     let locked_topic = Arc::new(RwLock::new(topic));
-    //     let mut producer = Producer::new(locked_topic.clone());
-    //     let bytes: [u8; 20] = [0; 20];
-    //     let offset = producer.produce_bytes(&bytes).expect("Unable to produce bytes");
-    // }
+        let locked_topic = Arc::new(RwLock::new(topic));
+        let mut producer = Producer::new(locked_topic.clone());
+        let bytes: [u8; 11] = [0; 11];
+        let producer_error = producer.produce_bytes(&bytes).unwrap_err();
+        let wanted_error =
+            ProducerError::new("Unable to produce message to the commitlog");
+        assert_eq!(wanted_error, producer_error);
+    }
 
     #[test]
     fn test_producer_produce_mutiple_bytes() {
