@@ -1,13 +1,14 @@
 use std::fmt::Write;
-use capnp::{serialize, message::ReaderOptions};
-use crate::lucid_schema_capnp::{message_envelope};
+use capnp::{serialize_packed, message::ReaderOptions};
+use crate::lucid_schema_capnp::message_envelope;
 
 pub fn parse_response(data: Vec<u8>) -> String {
+    let reader = serialize_packed::read_message(data.as_slice(), ReaderOptions::new()).unwrap();
     // Deserializing object
-   let reader = serialize::read_message(
-        data.as_slice(),
-        ReaderOptions::new()
-    ).unwrap();
+//    let reader = serialize::read_message(
+//         data.as_slice(),
+//         ReaderOptions::new()
+//     ).unwrap();
 
     let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
     match message_envelope.which() {

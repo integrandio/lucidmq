@@ -27,7 +27,7 @@ impl Index {
     /**
      * Create a new index
      */
-    pub fn new(index_path: String) -> Result<Index, IndexError> {
+    pub fn new(index_path: &str) -> Result<Index, IndexError> {
         let error_message = format!("Unable to create and open file {}", index_path);
         let file = OpenOptions::new()
             .create(true)
@@ -41,7 +41,7 @@ impl Index {
             })?;
         let empty_entry_vec = Vec::new();
         Ok(Index {
-            file_name: index_path,
+            file_name: index_path.to_string(),
             entries: empty_entry_vec,
             index_file: file,
         })
@@ -206,7 +206,7 @@ mod index_tests {
             .map(char::from)
             .collect();
         let index_file_path = format!("{}{}{}", test_dir_path.to_string(), &s, utils::INDEX_SUFFIX);
-        let index = Index::new(index_file_path).expect("Error creating index");  
+        let index = Index::new(&index_file_path).expect("Error creating index");  
         //Check if the index file exists
         assert!(Path::new(&index.file_name).exists());
     }
@@ -220,7 +220,7 @@ mod index_tests {
             .expect("Unable to convert path to string");
         let index_file_name = create_index_file(test_dir_path, "hello".as_bytes());
 
-        let mut index = Index::new(index_file_name).expect("Error creating index");
+        let mut index = Index::new(&index_file_name).expect("Error creating index");
         index.load_index().expect("unable to load index");
         assert!(index.entries.len() == 1);
     }
@@ -235,7 +235,7 @@ mod index_tests {
         let message = "hello";
         let index_file_name = create_index_file(test_dir_path, message.as_bytes());
 
-        let mut index = Index::new(index_file_name).expect("Error creating index");
+        let mut index = Index::new(&index_file_name).expect("Error creating index");
         index.load_index().expect("unable to load index");
 
         let (start, total) = index.return_entry_details_by_offset(0).expect("Unable to get entry details");
@@ -252,8 +252,7 @@ mod index_tests {
             .expect("Unable to convert path to string");
         let message = "hello";
         let index_file_name = create_index_file(test_dir_path, message.as_bytes());
-
-        let mut index = Index::new(index_file_name).expect("Error creating index");
+        let mut index = Index::new(&index_file_name).expect("Error creating index");
         index.load_index().expect("unable to load index");
 
         let index_error = index.return_entry_details_by_offset(1).unwrap_err();

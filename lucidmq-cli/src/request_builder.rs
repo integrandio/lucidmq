@@ -1,5 +1,5 @@
 use capnp::message::Builder;
-use capnp::serialize;
+use capnp::serialize_packed;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
 use crate::utils::{TOPIC_CREATE, TOPIC_DESCRIBE, TOPIC_DELETE};
@@ -25,8 +25,10 @@ fn new_topic_request_create(topic_name: &str) -> Vec<u8> {
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
 
-    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+
     framed_message
 }
 
@@ -42,8 +44,10 @@ fn new_topic_request_describe(topic_name: &str) -> Vec<u8> {
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
 
-    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+
     framed_message
 }
 
@@ -59,8 +63,10 @@ fn new_topic_request_delete(topic_name: &str) -> Vec<u8> {
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
 
-    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+
     framed_message
 }
 
@@ -91,8 +97,10 @@ pub fn new_produce_request(topic_name: &str, values: Vec<Vec<u8>>) -> Vec<u8> {
 
     message_envelope.set_produce_request(request_message.get_root_as_reader().expect("unable to get reader")).expect("Unable to set message sent");
 
-    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+
     framed_message
 }
 
@@ -109,8 +117,10 @@ pub fn new_consume_message(topic_name: &str, consumer_group: &str, timeout: u64)
 
     message_envelope.set_consume_request(consume_request.reborrow_as_reader()).expect("Unable to set message sent");
 
-    let serialized_message = serialize::write_message_to_words(&request_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+    
     framed_message
 }
 

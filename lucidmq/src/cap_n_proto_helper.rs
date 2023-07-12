@@ -1,5 +1,5 @@
 use capnp::message::{Builder, ReaderOptions, TypedReader, TypedBuilder};
-use capnp::serialize;
+use capnp::{serialize, serialize_packed};
 use log::info;
 use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request, message};
 use crate::types::Command;
@@ -17,8 +17,9 @@ pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> 
 
     message_envelope.set_topic_response(topic_response.reborrow_as_reader()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
 
     return framed_message;
 }
@@ -56,8 +57,9 @@ pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_reten
     }
     message_envelope.set_topic_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
 
     return framed_message;
 }
@@ -75,9 +77,10 @@ pub fn new_topic_response_delete(topic_name: &str, is_success: bool) -> Vec<u8>{
 
     message_envelope.set_topic_response(topic_response.reborrow_as_reader()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
-
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+    
     return framed_message;
 }
 
@@ -95,8 +98,9 @@ pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool
 
     message_envelope.set_produce_response(produce_response.reborrow_as_reader()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
 
     return framed_message;
 }
@@ -132,8 +136,9 @@ pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Ve
     }
     message_envelope.set_consume_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
 
-    let serialized_message = serialize::write_message_to_words(&response_message_envelope);
-    let framed_message = create_message_frame(serialized_message);
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
 
     return framed_message;
 }
@@ -148,7 +153,7 @@ fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
 
 pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
     // Deserializing object
-   let reader = serialize::read_message(
+   let reader = serialize_packed::read_message(
         data.as_slice(),
         ReaderOptions::new()
     ).unwrap();

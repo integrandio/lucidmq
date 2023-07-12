@@ -4,7 +4,6 @@ use capnp::message::{TypedReader, Builder, HeapAllocator};
 use tokio::sync::mpsc::{Sender, Receiver};
 use crate::lucid_schema_capnp::{produce_request, topic_request, consume_request};
 
-
 pub enum Command{
     TopicRequest {
         conn_id: String,

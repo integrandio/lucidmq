@@ -28,7 +28,7 @@ def topic_request_describe(topic_name: str):
 
     message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
     message_envelope.topicRequest = topic_request
-    return create_message_frame(message_envelope.to_bytes())
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 def topic_request_create(topic_name: str):
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
@@ -37,7 +37,7 @@ def topic_request_create(topic_name: str):
 
     message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
     message_envelope.topicRequest = topic_request
-    return create_message_frame(message_envelope.to_bytes())
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 def topic_request_delete(topic_name: str):
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
@@ -46,7 +46,7 @@ def topic_request_delete(topic_name: str):
 
     message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
     message_envelope.topicRequest = topic_request
-    return create_message_frame(message_envelope.to_bytes())
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 
 def produce_request(topic_name: str, key: bytes, value: bytes):
@@ -63,7 +63,7 @@ def produce_request(topic_name: str, key: bytes, value: bytes):
 
     message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
     message_envelope.produceRequest = produce_request
-    return create_message_frame(message_envelope.to_bytes())
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 def consume_request(topic_name: str, consumer_group: str, timeout: int):
     consume_request = lucid_schema_capnp.ConsumeRequest.new_message()
@@ -73,7 +73,7 @@ def consume_request(topic_name: str, consumer_group: str, timeout: int):
 
     message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
     message_envelope.consumeRequest = consume_request
-    return create_message_frame(message_envelope.to_bytes())
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 
 def create_message_frame(data: bytes):
@@ -81,16 +81,15 @@ def create_message_frame(data: bytes):
     size_in_bytes = num_bytes.to_bytes(2, byteorder = 'little')
     return size_in_bytes + data
 
-
 def response_parser(data: bytes):
-    with lucid_schema_capnp.MessageEnvelope.from_bytes(data) as message_envelope:
-        which = message_envelope.which()
-        match which:
-            case 'topicResponse':
-                return message_envelope.topicResponse
-            case 'produceResponse':
-                return message_envelope.produceResponse
-            case 'consumeResponse':
-                return message_envelope.consumeResponse
-            case _:
-                print("Invalid envelope type")
+    message_envelope = lucid_schema_capnp.MessageEnvelope.from_bytes_packed(data)
+    which_response = message_envelope.which()
+    match which_response:
+        case 'topicResponse':
+            return message_envelope.topicResponse
+        case 'produceResponse':
+            return message_envelope.produceResponse
+        case 'consumeResponse':
+            return message_envelope.consumeResponse
+        case _:
+            print("Invalid envelope type")

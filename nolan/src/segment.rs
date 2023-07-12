@@ -75,7 +75,7 @@ impl Segment {
      * segment into memory.
      */
     pub fn load_segment(
-        base_directory: String,
+        base_directory: &str,
         segment_base: String,
         //max_segment_bytes: u64
     ) -> Result<Segment, SegmentError> {
@@ -84,7 +84,7 @@ impl Segment {
             SegmentError::new("unable to parse base string into u16")
         })?;
         let log_file_name = utils::create_segment_file_name(
-            &base_directory,
+            base_directory,
             segment_offset,
             utils::LOG_SUFFIX,
         ).map_err(|e| {
@@ -114,14 +114,14 @@ impl Segment {
         })?;
 
         let index_file_name = utils::create_segment_file_name(
-            &base_directory,
+            base_directory,
             segment_offset,
             utils::INDEX_SUFFIX,
         ).map_err(|e| {
             error!("{}", e);
             SegmentError::new("Unable to create index file")
         })?;
-        let mut loaded_index = Index::new(index_file_name).map_err(|e| {
+        let mut loaded_index = Index::new(&index_file_name).map_err(|e| {
             SegmentError::new(&e.to_string())
         })?;
 
@@ -137,7 +137,7 @@ impl Segment {
             //max_bytes: max_segment_bytes,
             starting_offset: segment_offset,
             next_offset: total_entries,
-            directory: base_directory,
+            directory: base_directory.to_string(),
             log_file: file,
             index: loaded_index,
         };
@@ -277,7 +277,7 @@ mod segment_tests {
             .to_str()
             .expect("Unable to convert path to string");
         let segment_base = create_segment_file(test_dir_path, "hello".as_bytes());
-        let segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+        let segment = Segment::load_segment(test_dir_path, segment_base).expect("unable to load segment");
         //Check if the directory exists
         assert!(Path::new(&segment.file_name).exists());
     }
@@ -291,7 +291,7 @@ mod segment_tests {
             .expect("Unable to convert path to string");
         let message = "hello".as_bytes();
         let segment_base = create_segment_file(test_dir_path, message);
-        let mut segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+        let mut segment = Segment::load_segment(test_dir_path, segment_base).expect("unable to load segment");
 
         let result = segment.read_at(0).expect("Unable to read at offset");
 
@@ -307,7 +307,7 @@ mod segment_tests {
             .expect("Unable to convert path to string");
         let message = "hello".as_bytes();
         let segment_base = create_segment_file(test_dir_path, message);
-        let mut segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+        let mut segment = Segment::load_segment(test_dir_path, segment_base).expect("unable to load segment");
 
         let segment_error = segment.read_at(1).unwrap_err();
         let wanted_error =
@@ -324,7 +324,7 @@ mod segment_tests {
             .expect("Unable to convert path to string");
         let message = "hello".as_bytes();
         let segment_base = create_segment_file(test_dir_path, message);
-        let segment = Segment::load_segment(test_dir_path.to_string(), segment_base).expect("unable to load segment");
+        let segment = Segment::load_segment(test_dir_path, segment_base).expect("unable to load segment");
 
         let segment_path = segment.file_name.clone();
         let index_path = segment.index.file_name.clone();

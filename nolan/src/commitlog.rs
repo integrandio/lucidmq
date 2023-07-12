@@ -24,14 +24,14 @@ impl Commitlog {
     /// new creates a new commitlog taking in a base directory(where the segments live),
     /// a max segment size in bytes and a the max bytes the whole commitlog that the cleaner will retain.
     pub fn new(
-        base_directory: String,
+        base_directory: &str,
         max_segment_size_bytes: u64,
         cleaner_bytes_to_retain: u64,
     ) -> Result<Commitlog, CommitlogError> {
         let vec = Vec::new();
         let new_cleaner = Cleaner::new(cleaner_bytes_to_retain);
         let mut commitlog = Commitlog {
-            directory: base_directory.clone(),
+            directory: base_directory.to_string(),
             segments: vec,
             cleaner: new_cleaner,
             max_segment_size: max_segment_size_bytes,
@@ -105,7 +105,7 @@ impl Commitlog {
             }
         }
         for segment_file in valid_segment_files {
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment_file).map_err(|e| {
+            let loaded_segment = Segment::load_segment(&self.directory, segment_file).map_err(|e| {
                 error!("{}", e);
                 CommitlogError::new("unable to load segment")
             })?;
@@ -221,7 +221,7 @@ impl Commitlog {
 
         for segment in segments_to_add {
             info!("updating a new segment {}", segment);
-            let loaded_segment = Segment::load_segment(self.directory.clone(), segment)
+            let loaded_segment = Segment::load_segment(&self.directory, segment)
                 .expect("unable to laod segment");
             self.segments.push(loaded_segment);
         }
@@ -249,13 +249,10 @@ impl Commitlog {
                 error!("{}", e);
                 CommitlogError::new("Unable to flush commitlog to disk")
             })?;
-
         // Get the next offset from current segment and create a new segment with it
         let next_offset = self.current_segment.starting_offset + self.current_segment.next_offset;
-
         self.current_segment =
             VirtualSegment::new(&self.directory, self.max_segment_size, next_offset);
-
         // Since our last current segment got flushed to disk, reload from disk to update the segments
         self.reload_segments();
         Ok(())
@@ -369,20 +366,19 @@ mod commitlog_tests {
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let commitlog = Commitlog::new(String::from(tmp_dir_string), 100, 1000).expect("Unable to create commitlog");
+        let commitlog = Commitlog::new(tmp_dir_string, 100, 1000).expect("Unable to create commitlog");
         assert!(Path::new(&commitlog.directory).is_dir());
     }
 
     #[test]
     fn test_append() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
         let mut cl =
-            Commitlog::new(test_dir_path.clone(), 100, 1000).expect("Unable to create commitlog");
+            Commitlog::new(tmp_dir_path, 100, 1000).expect("Unable to create commitlog");
         let test_data = "producer1".as_bytes();
         cl.append(test_data).expect("Unable to append message");
 
@@ -393,12 +389,11 @@ mod commitlog_tests {
     #[test]
     fn test_append_multiple() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
-        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000).expect("Unable to create commitlog");
+        let mut cl = Commitlog::new(tmp_dir_path, 1000, 10000).expect("Unable to create commitlog");
         let test_data = "message".as_bytes();
         for n in 0..10 {
             let offset = cl.append(test_data).expect("Unable to append message");
@@ -410,12 +405,11 @@ mod commitlog_tests {
     fn test_split() {
         let number_of_iterations = 20;
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
-        let mut cl = Commitlog::new(test_dir_path.clone(), 100, 1000).expect("Unable to create commitlog");
+        let mut cl = Commitlog::new(tmp_dir_path, 100, 1000).expect("Unable to create commitlog");
 
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
@@ -437,12 +431,11 @@ mod commitlog_tests {
     fn get_oldest_offset_test() {
         let number_of_iterations = 5;
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
-        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000).expect("Unable to create commitlog");
+        let mut cl = Commitlog::new(tmp_dir_path, 1000, 10000).expect("Unable to create commitlog");
 
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
@@ -458,12 +451,11 @@ mod commitlog_tests {
     fn get_latest_offset_test() {
         let number_of_iterations = 5;
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
-        let mut cl = Commitlog::new(test_dir_path.clone(), 1000, 10000).expect("Unable to create commitlog");
+        let mut cl = Commitlog::new(tmp_dir_path, 1000, 10000).expect("Unable to create commitlog");
 
         for i in 0..number_of_iterations {
             let string_message = format!("myTestMessage{}", i);
@@ -478,13 +470,12 @@ mod commitlog_tests {
     #[test]
     fn test_append_message_bigger_than_segment() {
         let tmp_dir = TempDir::new("test").expect("Unable to create temp directory");
-        let tmp_dir_string = tmp_dir
+        let tmp_dir_path = tmp_dir
             .path()
             .to_str()
             .expect("Unable to conver path to string");
-        let test_dir_path = String::from(tmp_dir_string);
         let mut cl =
-            Commitlog::new(test_dir_path.clone(), 10, 100).expect("Unable to create commitlog");
+            Commitlog::new(tmp_dir_path, 10, 100).expect("Unable to create commitlog");
         let bytes: [u8; 11] = [0; 11];
         let commitlog_error = cl.append(&bytes).unwrap_err();
         let wanted_error =

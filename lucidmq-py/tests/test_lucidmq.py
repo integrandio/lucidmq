@@ -1,3 +1,4 @@
+# This is the integration test suite for LucidMQ
 from lucidmq_client import Producer, Consumer, TopicManager
 import string
 import random
