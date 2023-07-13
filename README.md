@@ -3,7 +3,7 @@
     
 ![LucidMQ](https://user-images.githubusercontent.com/25624274/218341069-514ac1ec-0a06-4260-a229-c047dd531ac2.png)
 
-**Simple Ops Event Streaming. Alternative to Kafka and Rabbitmq. Build your real time applications without the headache of ops overhead.**
+**Simple-Ops Event Streaming. Alternative to Kafka and Rabbitmq. Build your real time applications without the headache of ops overhead.**
 
 <a href="https://lucidmq.com/docs/">Documentation</a> •
 <a href="https://lucidmq.com">Blog</a> 
@@ -24,17 +24,19 @@ LucidMQ is a streaming platform that focuses on providing low configuration and 
 
 ### Repo Structure
 
-The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. Lucidmq-py provides a client library for Python as well as integration tests for LucidMQ.
+The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. `Lucidmq-py` provides a client library for Python as well as integration tests for LucidMQ.
 
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq          # Lucidmq broker and server
     ├── lucidmq-cli      # CLI client for interacting with lucidmq
     ├── lucidmq-py       # Python client library and integration tests
-    └── protocol         # CapNProto Definitions for the protocol use for client-server messaging
+    └── protocol         # Cap N' Proto Definitions for the protocol use for client-server messaging
 
 ---
 
 ## Getting Started
+
+Getting started is easy. Just run a server instance of LucidMQ and pick a client to interact with your server(CLI and Python Clients avaliable for now).
 
 ### How to Run LucidMQ
 
@@ -45,7 +47,7 @@ The repository is a monorepo with everything LucidMQ related. In the future some
 - https://www.rust-lang.org/tools/install
 - https://doc.rust-lang.org/book/ch01-01-installation.html
 
-2. Capnproto Installed
+2. Cap N' Proto Installed
 - https://capnproto.org/install.html
 
 See the [README in LucidMQ Directory](/lucidmq/README.md) for starting up the LucidMQ Server.
@@ -73,7 +75,7 @@ docker run -it -p 6969:6969 lucidmq
 
 #### Running the integration tests
 
-LucidMQ's integration tests run on the pipeline via every push to main. During local development it may be useful to verify that things are working as intended. Luckily the test infrastructure in bundled in docker compose and is extreamly portable.
+LucidMQ's integration tests run on the pipeline via every push to main. During local development it may be useful to verify that things are working as intended. Luckily the test infrastructure in bundled in docker compose. This allows for the intrgration test architecture to be is extreamly portable and easy to use.
 
 Run the integ tests using the following command:
 ```
@@ -82,12 +84,14 @@ docker-compose up --build --exit-code-from test-runner
 
 ## Why do you need LucidMQ?
 
-LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundation libraries like Cap N Proto and Rust to eliminate memory bugs. Also, this project aims to have world class documentation to spread knowledge about event streaming based systems.
+LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundational libraries like Cap N' Proto and is built using Rust to take advantage of the memory safety promises. Secondly, this project aims to have world class documentation to spread knowledge about event streaming based systems.
 
 ## How to Help?
 
 - Start running instances of LucidMQ and report bugs
 - Issues will be added and tagged for anyone looking to get their hands dirty
+- Assist with documentation
+- Write unit and integration test
 
 Help realize the future of a low frustration ops experience of a message broker.
 
