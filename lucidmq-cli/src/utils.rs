@@ -10,4 +10,5 @@ pub const QUIT: &str = "quit";
 pub const TOPIC_CREATE: &str = "create";
 pub const TOPIC_DESCRIBE: &str = "describe";
 pub const TOPIC_DELETE: &str = "delete";
+pub const TOPIC_ALL: &str = "all";
 

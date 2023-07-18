@@ -6,6 +6,8 @@ use std::{
     io::{Cursor, Read, Seek, SeekFrom, Write},
 };
 
+/// A virtual segment is a data type that holds all of the sement data only in memory.
+/// This is intended to use only for the current segment, that is to allow for fast access for data in that segment.
 pub struct VirtualSegment {
     contents: Cursor<Vec<u8>>,
     /// The last position in the log file to allow for easy writes
@@ -20,7 +22,7 @@ pub struct VirtualSegment {
 }
 
 impl VirtualSegment {
-    /// Create a virtual segment with the provided starting offset
+    /// Create a virtual segment with the provided starting offset and max segment bytes.
     pub fn new(base_directory: &str, max_segment_bytes: u64, offset: u16) -> VirtualSegment {
         info!("Creating a new virtual segment");
         let log_file_path =
@@ -114,10 +116,8 @@ impl VirtualSegment {
         Ok(segment)
     }
 
-    /**
-     * Given a byte array, write that data to the corresponding log and index.
-     * Return the offset in the segment that was written to.
-     */
+    /// Given a byte array, write that data to the corresponding log and index.
+    /// Return the offset in the segment that was written to.
     pub fn write(&mut self, data: &[u8]) -> Result<u16, SegmentError> {
         if data.len() > self.max_bytes.try_into().unwrap() {
             return Err(SegmentError::new("Data to write is greater than the allowed max segment size"));
@@ -152,9 +152,7 @@ impl VirtualSegment {
         Ok(offset_written)
     }
 
-    /**
-     * Given an offset, find the entry in the index and get the bytes fromt he log
-     */
+    /// Given an offset, find the entry in the index and get the bytes fromt he log
     pub fn read_at(&mut self, offset: usize) -> Result<Vec<u8>, SegmentError> {
         // This condition is only applied when we're dealing with segment 0, can this be combined below??
         if (self.starting_offset == 0 && offset >= usize::from(self.next_offset))
@@ -184,6 +182,8 @@ impl VirtualSegment {
         Ok(buffer)
     }
 
+    /// Flushes the virtual segment to disk, where it will become a regular segment. This involves 2 write
+    /// operations, writing the log file and writing the index file.
     pub fn flush(&self) -> Result<(), SegmentError> {
         let mut log_file = OpenOptions::new()
             .create(true)

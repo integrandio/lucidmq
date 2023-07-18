@@ -7,9 +7,7 @@ pub const INDEX_EXTENSION: &str = "index";
 pub const LOG_SUFFIX: &str = ".log";
 pub const INDEX_SUFFIX: &str = ".index";
 
-/**
- * Given a directory, a starting offset and a file type suffix, create and return the path to the file.
- */
+/// Given a directory, a starting offset and a file type suffix, create and return the path to the file.
 pub fn create_segment_file_name(
     directory: &str,
     starting_offset: u16,

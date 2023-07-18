@@ -1,27 +1,21 @@
 use std::fmt::Write;
 use capnp::{serialize_packed, message::ReaderOptions};
-use crate::lucid_schema_capnp::message_envelope;
+use crate::lucid_schema_capnp::{message_envelope, topic_response};
 
 pub fn parse_response(data: Vec<u8>) -> String {
     let reader = serialize_packed::read_message(data.as_slice(), ReaderOptions::new()).unwrap();
-    // Deserializing object
-//    let reader = serialize::read_message(
-//         data.as_slice(),
-//         ReaderOptions::new()
-//     ).unwrap();
-
     let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
     match message_envelope.which() {
         Ok(message_envelope::TopicResponse(envelope_topic_response)) => {
             let topic_response = envelope_topic_response.expect("Unable to get topic request from envelope");
             match topic_response.which() {
-                Ok(crate::lucid_schema_capnp::topic_response::Which::Create(_create)) => {
+                Ok(topic_response::Which::Create(_create)) => {
                     let mut s = "Topic Create Response ------------\n".to_string();
                     write!(s, "Topic Name: {}\n", topic_response.get_topic_name().unwrap()).unwrap();
                     write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
                     return s;
                 },
-                Ok(crate::lucid_schema_capnp::topic_response::Which::Describe(describe)) => {
+                Ok(topic_response::Which::Describe(describe)) => {
                     let mut s = "Topic Describe Response ------------\n".to_string();
                     write!(s, "Topic Name: {}\n", topic_response.get_topic_name().unwrap()).unwrap();
                     write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
@@ -34,10 +28,17 @@ pub fn parse_response(data: Vec<u8>) -> String {
                     write!(s, "Topic max retention bytes: {}, max segments bytes: {}, consumer groups: {:?}\n", describe.get_max_retention_bytes(), describe.get_max_segment_bytes(), cgs_vec).unwrap();
                     return s;
                 },
-                Ok(crate::lucid_schema_capnp::topic_response::Which::Delete(_deletes)) => {
+                Ok(topic_response::Which::Delete(_deletes)) => {
                     let mut s = "Topic Delete Response ------------\n".to_string();
                     write!(s, "Topic Name: {}\n", topic_response.get_topic_name().unwrap()).unwrap();
                     write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
+                    return s;
+                },
+                Ok(topic_response::Which::All(_all)) => {
+                    // this thing is fucked
+                    let mut s = "Topic All Response ------------\n".to_string();
+                    write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
+                    //let topic_list = all.
                     return s;
                 },
                 Err(_) => unimplemented!(),

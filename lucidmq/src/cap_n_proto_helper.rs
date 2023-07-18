@@ -2,6 +2,7 @@ use capnp::message::{Builder, ReaderOptions, TypedReader, TypedBuilder};
 use capnp::{serialize, serialize_packed};
 use log::info;
 use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request, message};
+use crate::topic::SimpleTopic;
 use crate::types::Command;
 
 pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> {
@@ -40,7 +41,7 @@ pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_reten
         describe.set_max_segment_bytes(max_segment);
         //Build our consumer group response
         let size = u32::try_from(consumer_groups.len()).unwrap();
-        let mut cgs = describe.init_consumer_groups(size);
+        let mut cgs: capnp::text_list::Builder<'_> = describe.init_consumer_groups(size);
         for (i, consumer_group) in consumer_groups.iter().enumerate() {
             let ind_u32 = u32::try_from(i).unwrap();
             {
@@ -64,6 +65,42 @@ pub fn new_topic_response_describe(topic_name: &str, is_success: bool, max_reten
     return framed_message;
 }
 
+pub fn new_topic_response_all(is_success: bool, topics_datas: Vec<SimpleTopic>) -> Vec<u8>{
+    let mut response_message_envelope = Builder::new_default();
+    let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_response = request_message.init_root::<topic_response::Builder>();
+
+    topic_response.set_topic_name("placeholder");
+    topic_response.set_success(is_success);
+    if is_success {
+        let size = u32::try_from(topics_datas.len()).unwrap();
+        let mut all = topic_response.init_all(size);
+        for (i, topic_data) in topics_datas.iter().enumerate() {
+            let index_u32 = u32::try_from(i).unwrap();
+            let mut topics_list_object = all.reborrow().get(index_u32);
+            topics_list_object.set_topic_name(&topic_data.topic_name);
+            let consumer_group_size = u32::try_from(topic_data.consumer_groups.len()).unwrap();
+            let mut cgs = topics_list_object.init_consumer_groups(consumer_group_size);
+            for (j, consumer_group) in topic_data.consumer_groups.iter().enumerate() {
+                let cg_ind_u32 = u32::try_from(j).unwrap();
+                {
+                    cgs.reborrow().set(cg_ind_u32, consumer_group);
+                }
+            }
+        }
+    }
+
+    message_envelope.set_topic_response(request_message.get_root_as_reader().unwrap()).expect("Unable to set message");
+
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &response_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+    
+    return framed_message;
+}
+
 pub fn new_topic_response_delete(topic_name: &str, is_success: bool) -> Vec<u8>{
     let mut response_message_envelope = Builder::new_default();
     let mut message_envelope = response_message_envelope.init_root::<message_envelope::Builder>();
@@ -83,7 +120,6 @@ pub fn new_topic_response_delete(topic_name: &str, is_success: bool) -> Vec<u8>{
     
     return framed_message;
 }
-
 
 pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
@@ -125,9 +161,9 @@ pub fn new_consume_response(topic_name: &str, is_success: bool, message_data: Ve
                 ReaderOptions::new()
             ).unwrap();
             let reader = message_reader.get_root::<message::Reader>().unwrap();
-            let thing = u32::try_from(i).unwrap();
+            let message_index = u32::try_from(i).unwrap();
             {
-                messages.reborrow().set_with_caveats(thing, reader).unwrap();
+                messages.reborrow().set_with_caveats(message_index, reader).unwrap();
             }
         }
     } else {

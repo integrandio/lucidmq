@@ -2,13 +2,14 @@ use capnp::message::Builder;
 use capnp::serialize_packed;
 use std::time::{SystemTime, UNIX_EPOCH};
 use crate::lucid_schema_capnp::{topic_request, produce_request, consume_request, message_envelope};
-use crate::utils::{TOPIC_CREATE, TOPIC_DESCRIBE, TOPIC_DELETE};
+use crate::utils::{TOPIC_CREATE, TOPIC_DESCRIBE, TOPIC_DELETE, TOPIC_ALL};
 
 pub fn new_topic_request(topic_name: &str, topic_request_type: &str) -> Vec<u8> {
     match topic_request_type {
         TOPIC_CREATE => new_topic_request_create(topic_name),
         TOPIC_DESCRIBE => new_topic_request_describe(topic_name),
         TOPIC_DELETE => new_topic_request_delete(topic_name),
+        TOPIC_ALL => new_topic_request_all(),
         _ => panic!("Invalid topic command...")
     }
 }
@@ -22,6 +23,25 @@ fn new_topic_request_create(topic_name: &str) -> Vec<u8> {
 
     topic_request.set_topic_name(topic_name);
     topic_request.set_create(());
+
+    message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
+
+    let mut buffer = vec![];
+    serialize_packed::write_message(&mut buffer, &request_message_envelope).expect("Unable to serialize packed message");
+    let framed_message = create_message_frame(buffer);
+
+    framed_message
+}
+
+fn new_topic_request_all() -> Vec<u8> {
+    let mut request_message_envelope = Builder::new_default();
+    let mut message_envelope = request_message_envelope.init_root::<message_envelope::Builder>();
+
+    let mut request_message = Builder::new_default();
+    let mut topic_request = request_message.init_root::<topic_request::Builder>();
+
+    topic_request.set_topic_name("topic_name");
+    topic_request.set_all(());
 
     message_envelope.set_topic_request(topic_request.reborrow_as_reader()).expect("Unable to set message sent");
 

@@ -13,14 +13,13 @@ struct MessageEnvelope {
 }
 
 # ----- Topic Messages --------
-
 struct TopicRequest {
   topicName @0 :Text;
   union {
     describe @1 :Void;
     create @2 :Void;
     delete @3 :Void;
-    #all @4 :Void;
+    all @4 :Void;
   }
 }
 
@@ -35,8 +34,13 @@ struct TopicResponse {
     }
     create @5 :Void;
     delete @6 :Void;
-    #all @7 :List(Text);
+    all @7 :List(TopicsList);
   }
+}
+
+struct TopicsList {
+  topicName @0 :Text;
+  consumerGroups @1 :List(Text);
 }
 
 struct ProduceRequest {

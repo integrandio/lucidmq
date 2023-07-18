@@ -1,11 +1,11 @@
 use crate::cap_n_proto_helper::{
     new_consume_response, new_produce_response, new_topic_response_create,
-    new_topic_response_delete, new_topic_response_describe,
+    new_topic_response_delete, new_topic_response_describe, new_topic_response_all
 };
 use crate::lucid_schema_capnp::{consume_request, produce_request, topic_request};
 use crate::{
     consumer::Consumer, producer::Producer, topic::Topic, types::Command, types::SenderType,
-    RecieverType,
+    RecieverType, topic::SimpleTopic
 };
 use capnp::{
     message::{Builder, HeapAllocator, TypedReader},
@@ -148,7 +148,10 @@ impl Broker {
             }
             Ok(topic_request::Which::Describe(_describe_request)) => {
                 Ok(self.handle_describe_topic(topic_name))?
-            }
+            },
+            Ok(topic_request::Which::All(_all_request)) => {
+                Ok(self.handle_all_topic())?
+            },
             Err(_) => Err(BrokerError::new("Unknown topic request type")),
         }
     }
@@ -256,6 +259,24 @@ impl Broker {
                 Ok(new_topic_response_delete(topic_name, false))
             }
         }
+    }
+
+    fn handle_all_topic(&mut self) -> Result<Vec<u8>, BrokerError> {
+        if self.topics.read().expect("unable to get read lock").is_empty(){
+            return Err(BrokerError::new("Unable to get topic name from consume request"));
+        }
+        let mut simple_topics = Vec::new();
+        for topic in self.topics.read().expect("unable to get topic lock").iter() {
+            let topic_name = &topic.read().unwrap().name;
+            let consumer_groups = topic.read().unwrap().get_consumer_groups();
+            let st = SimpleTopic {
+                topic_name: topic_name.to_string(),
+                consumer_groups: consumer_groups
+            };
+            simple_topics.push(st)
+        }
+        let response_data = new_topic_response_all(true, simple_topics);
+        Ok(response_data)
     }
 
     async fn handle_consumer(

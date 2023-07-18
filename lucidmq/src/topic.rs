@@ -145,3 +145,9 @@ impl Topic {
         self.max_segment_size
     }
 }
+
+
+pub struct SimpleTopic {
+    pub topic_name: String,
+    pub consumer_groups: Vec<String>
+}

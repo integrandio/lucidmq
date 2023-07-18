@@ -1,5 +1,4 @@
 //! Nolan is a crate that specifies a implemeation for a commitlog storage structure.
-//!
 use log::{error, info, warn};
 use std::fs;
 
@@ -11,7 +10,8 @@ use std::collections::HashMap;
 use crate::utils;
 
 /// Commitlog is a struct that represents the logs stored on memory and on disc.
-/// A commitlog is a directory that is made up of segments that stored within that directory.
+/// At it's core, a commitlog is a directory that is made up of segments(logs and indexs)
+/// that are stored within that directory.
 pub struct Commitlog {
     directory: String,
     segments: Vec<Segment>,
@@ -22,7 +22,8 @@ pub struct Commitlog {
 
 impl Commitlog {
     /// new creates a new commitlog taking in a base directory(where the segments live),
-    /// a max segment size in bytes and a the max bytes the whole commitlog that the cleaner will retain.
+    /// a max segment size in bytes and a the max bytes the that the cleaner will retain
+    /// for the entire commitlog.
     pub fn new(
         base_directory: &str,
         max_segment_size_bytes: u64,
@@ -45,6 +46,8 @@ impl Commitlog {
         Ok(commitlog)
     }
 
+    /// Given bytes, append those bytes onto the current segment. If those bytes will not fit onto the segment,
+    /// split the segment by creating a new one and append the bytes there.
     pub fn append(&mut self, data: &[u8]) -> Result<u16, CommitlogError> {
         match self.current_segment.write(data) {
             Ok(segment_offset_written) => {
@@ -72,7 +75,8 @@ impl Commitlog {
     }
 
     /// Look through the directory of the commitlog and load the segments into memory.
-    /// Also performs some cleanup on non-matching logs and indexes
+    /// Also performs some cleanup on non-matching logs and indexes(for example, if there is a log file with a non-matching
+    /// index or vice versa)
     fn load_segments(&mut self) -> Result<(), CommitlogError> {
         //let mut files_to_clean: HashMap<String, String> = HashMap::new();
         //let paths = fs::read_dir(&self.directory).expect("Unable to read files in directory.");
@@ -159,6 +163,7 @@ impl Commitlog {
     //     current_segment.reload().expect("Unable to reload segment");
     // }
 
+    /// Get the max segment size that is assigned to the commitlog.
     pub fn get_max_segment_size(&self) -> u64 {
         self.max_segment_size
     }
@@ -237,9 +242,8 @@ impl Commitlog {
         // }
     }
 
-    /**
-     * Create a new segment and set the latest segment value to that new segment
-     */
+    /// Create a new segment and set the latest segment value to that new segment. 
+    /// Also flushes the sement to the disk, before creating and updating the segment
     fn split(&mut self) -> Result<(), CommitlogError> {
         info!("Spliting commitlog segment");
         //Flush the current virtual segment to disk
@@ -258,10 +262,7 @@ impl Commitlog {
         Ok(())
     }
 
-    /**
-     * Given an offset, find and read the value from the commitlog for the
-     * segment that it is located in.
-     */
+    /// Given an offset, find and read the value from the commitlog for the segment that it is located in.
     pub fn read(&mut self, offset: usize) -> Result<Vec<u8>, CommitlogError> {
         //First check the current segment
         if usize::from(self.current_segment.starting_offset) <= offset {
@@ -313,9 +314,7 @@ impl Commitlog {
         }
     }
 
-    /**
-     * clean calls the cleaner to clean up the commitlog directory, it then updates the latest segment pointer.
-     */
+    /// Clean calls the cleaner to clean up the commitlog directory, it then updates the latest segment pointer.
     fn clean(&mut self) -> Result<(), CommitlogError>{
         info!("attempting to clean commitlog");
         let cleaner_response = self.cleaner.clean(&mut self.segments);
@@ -331,9 +330,7 @@ impl Commitlog {
         // self.current_segment_index = AtomicUsize::new(latest_segment_index);
     }
 
-    /**
-     * Returns the first offset of the first segment.
-     */
+    /// Returns the first offset of the oldest segment stored in the commitlog.
     pub fn get_oldest_offset(&self) -> usize {
         // If there is no segments intialized, just return 0
         if self.segments.len() == 0 {
@@ -344,9 +341,7 @@ impl Commitlog {
         usize::from(offset)
     }
 
-    /**
-     * Returns the first offset of the first segment.
-     */
+    /// Returns the first offset of the first segment.
     pub fn get_latest_offset(&self) -> usize {
         let offset: u16 = self.current_segment.next_offset;
         usize::from(offset)

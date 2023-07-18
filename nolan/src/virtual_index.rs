@@ -6,6 +6,8 @@ use std::{
 use crate::{index::Entry, nolan_errors::IndexError};
 use log::error;
 
+/// A virtual index is a struct that holds all of the meta data about the segment. 
+/// Most importantly it stores entry information for fast lookups.
 pub struct VirtualIndex {
     contents: Cursor<Vec<u8>>,
     entries: Vec<Entry>,
@@ -13,6 +15,7 @@ pub struct VirtualIndex {
 }
 
 impl VirtualIndex {
+    /// new creates a new virtual index. This is memory implementation where the data is stored in a cursur
     pub fn new(index_path: String) -> VirtualIndex {
         VirtualIndex {
             contents: Cursor::new(Vec::new()),
@@ -21,9 +24,7 @@ impl VirtualIndex {
         }
     }
 
-    /**
-     * Add a new entry to the index
-     */
+    /// Add a new entry to the index
     pub fn add_entry(&mut self, start_position: u32, total_bytes: u32) -> Result<bool, IndexError> {
         let entry = Entry {
             start: start_position,
@@ -44,9 +45,7 @@ impl VirtualIndex {
         Ok(true)
     }
 
-    /**
-     * Given an offset, return the entry in the index starting position and total bytes.
-     */
+    /// Given an offset, return the entry in the index starting position and total bytes.
     pub fn return_entry_details_by_offset(
         &self,
         offset: usize,
@@ -54,10 +53,8 @@ impl VirtualIndex {
         if self.entries.len() <= offset {
             return Err(IndexError::new("offset requested is greater than the entries legnth"))
         }
-        // This can throw an exception if the offset is greater than the size of the array, how do we check?
         let entry = self.entries[offset];
         let start_offset: u64 = entry.start.into();
-        //TODO: error handle this correctly
         let total_bytes: usize = usize::try_from(entry.total).map_err(|e| {
             error!("{}", e);
             IndexError::new("unable to convert from u32 to usize")
@@ -85,9 +82,7 @@ impl VirtualIndex {
             Ok(())
     }
 
-    /**
-     * Load the index into memory
-     */
+    /// Load the index data from disk into memory
     pub fn load_index(&mut self) -> Result<u16, IndexError> {
         let mut index_file = OpenOptions::new()
             .create(false)

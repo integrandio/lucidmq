@@ -2,7 +2,7 @@ mod tcp_client;
 use std::io::Write;
 use std::time::{Instant, Duration};
 use std::{thread, time};
-use std::{net::SocketAddr};
+use std::net::SocketAddr;
 use env_logger::Builder;
 use log::{LevelFilter, info};
 use tokio::sync::mpsc::{UnboundedSender, UnboundedReceiver};

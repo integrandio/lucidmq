@@ -8,18 +8,15 @@ pub struct Cleaner {
 }
 
 impl Cleaner {
-    /**
-     * Initialize a new cleaner, based on retention
-     */
+    /// Initialize a new cleaner, based on a retention size in bytes
     pub fn new(bytes_to_retain: u64) -> Cleaner {
         Cleaner {
             retention_bytes: bytes_to_retain,
         }
     }
 
-    /**
-     * Cleans up the segments based on the cleaners retention bytes
-     */
+    /// Cleans up the segments based on the cleaners retention bytes. 
+    /// If the total bytes stored on segments exceed the max bytes, segments will be removed.
     pub fn clean(&self, segments: &mut Vec<Segment>) -> Result<bool, CleanerError> {
         let mut total_bytes = 0;
         let mut segment_postion = segments.len();
