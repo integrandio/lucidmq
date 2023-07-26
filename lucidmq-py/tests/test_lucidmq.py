@@ -244,3 +244,6 @@ class TestConsumer:
         assert consumer_request_result['success'] == False
         assert consumer_request_result['topicName'] == topic_name
         assert len(consumer_request_result['messages']) == 0
+
+        # Delete the topic to clean up
+        topic_delete_result = topic_manager.delete_topic(topic_name)

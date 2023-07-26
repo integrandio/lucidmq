@@ -74,3 +74,10 @@ class TopicManager(LucidmqClient):
         data = self.recieve_response()
         topic_delete_object = cap_helper.response_parser(data)
         return topic_delete_object.to_dict()
+    
+    def all_topic(self):
+        msg = cap_helper.topic_request_all()
+        self.send_message_bytes(msg)
+        data = self.recieve_response()
+        topic_all_object = cap_helper.response_parser(data)
+        return topic_all_object.to_dict()

@@ -48,6 +48,14 @@ def topic_request_delete(topic_name: str):
     message_envelope.topicRequest = topic_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
+def topic_request_all():
+    topic_request = lucid_schema_capnp.TopicRequest.new_message()
+    topic_request.topicName = "placeholder"
+    topic_request.all = None
+    
+    message_envelope = lucid_schema_capnp.MessageEnvelope.new_message()
+    message_envelope.topicRequest = topic_request
+    return create_message_frame(message_envelope.to_bytes_packed())
 
 def produce_request(topic_name: str, key: bytes, value: bytes):
     produce_request = lucid_schema_capnp.ProduceRequest.new_message()

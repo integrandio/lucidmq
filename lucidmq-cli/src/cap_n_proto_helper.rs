@@ -34,11 +34,20 @@ pub fn parse_response(data: Vec<u8>) -> String {
                     write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
                     return s;
                 },
-                Ok(topic_response::Which::All(_all)) => {
+                Ok(topic_response::Which::All(all)) => {
+                    let unwraped_all = all.unwrap();
                     // this thing is fucked
                     let mut s = "Topic All Response ------------\n".to_string();
                     write!(s, "Status: {}\n", topic_response.get_success()).unwrap();
-                    //let topic_list = all.
+                    for i in 0..unwraped_all.len() {
+                        let topic = unwraped_all.get(i);
+                        let cgs = topic.get_consumer_groups().unwrap();
+                        let mut cgs_vec = Vec::new();
+                        for msg in cgs {
+                            cgs_vec.push(msg.unwrap().to_string())
+                        }
+                        write!(s, "Topic Name: {}, consumer groups: {:?}\n", topic.get_topic_name().unwrap(), cgs_vec).unwrap();
+                    }
                     return s;
                 },
                 Err(_) => unimplemented!(),
@@ -60,7 +69,6 @@ pub fn parse_response(data: Vec<u8>) -> String {
 
             let messages = consume_response.get_messages().unwrap();
             let mut message_vec = Vec::new();
-            //let second_vec = messages.iter().map(|x| format!("Key: {:?},Value: {:?}, Timestamp: {}", x.get_key().unwrap(), x.get_value().unwrap(), x.get_timestamp())).collect();
             for msg in messages {
                 let message_string = format!("Key: {:?},Value: {:?}, Timestamp: {}", msg.get_key().unwrap(), msg.get_value().unwrap(), msg.get_timestamp());
                 message_vec.push(message_string)
