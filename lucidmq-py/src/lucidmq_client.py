@@ -81,3 +81,6 @@ class TopicManager(LucidmqClient):
         data = self.recieve_response()
         topic_all_object = cap_helper.response_parser(data)
         return topic_all_object.to_dict()
+        
+    def close(self):
+        self.close_client()

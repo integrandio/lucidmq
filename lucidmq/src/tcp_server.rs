@@ -114,7 +114,7 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
                 break;
             }
         };
-        let msg = parse_request(conn_id.clone(), message_buff.clone());
+        let msg = parse_request(conn_id.clone(), message_buff.clone()).expect("Unable to parse message");
         sender.send(msg).await.expect("Unble to send message");
     }
 }

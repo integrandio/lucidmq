@@ -1,9 +1,10 @@
 use capnp::message::{Builder, ReaderOptions, TypedReader, TypedBuilder};
 use capnp::{serialize, serialize_packed};
-use log::info;
+use log::{info, error};
 use crate::lucid_schema_capnp::{topic_response, produce_response, consume_response, message_envelope, topic_request, produce_request, consume_request, message};
 use crate::topic::SimpleTopic;
 use crate::types::Command;
+use crate::lucidmq_errors::ProtocolError;
 
 pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
@@ -187,12 +188,15 @@ fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
     return original_message;
 }
 
-pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
+pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, ProtocolError>  {
     // Deserializing object
    let reader = serialize_packed::read_message(
         data.as_slice(),
         ReaderOptions::new()
-    ).unwrap();
+    ).map_err(|e| {
+        error!("{}", e);
+        ProtocolError::new("Unable to parse bytes into readable message")
+    })?;
 
     let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
     match message_envelope.which() {
@@ -202,10 +206,10 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
             let mut message = TypedBuilder::<topic_request::Owned>::new_default();
             message.set_root(topic_request).unwrap();
             let typed_reader = TypedReader::from(message);
-            Command::TopicRequest { 
+            Ok(Command::TopicRequest { 
                 conn_id: conn_id,
                 capmessage: typed_reader
-            }
+            })
         },
         Ok(message_envelope::ProduceRequest(envelope_produce_request)) => {
             let produce_request = envelope_produce_request.expect("Unable to get produce request from envelope");
@@ -218,44 +222,44 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Command {
             let mut message = TypedBuilder::<produce_request::Owned>::new_default();
             message.set_root(produce_request).unwrap();
             let typed_reader = TypedReader::from(message);
-            Command::ProduceRequest { 
+            Ok(Command::ProduceRequest { 
                 conn_id: conn_id,
                 capmessage: typed_reader
-            }
+            })
         },
         Ok(message_envelope::ConsumeRequest(envelope_consume_request)) => {
             let consume_request = envelope_consume_request.unwrap();
             let mut message = TypedBuilder::<consume_request::Owned>::new_default();
             message.set_root(consume_request).unwrap();
             let typed_reader = TypedReader::from(message);
-            Command::ConsumeRequest { 
+            Ok(Command::ConsumeRequest { 
                 conn_id: conn_id,
                 capmessage: typed_reader
-            }
+            })
         },
         Ok(message_envelope::TopicResponse(envelope_topic_response)) => {
             info!("{}", envelope_topic_response.unwrap().get_topic_name().unwrap());
-            Command::Invalid { 
+            Ok(Command::Invalid { 
                 message: "Topic Response is an invalid request".to_string()
-            }
+            })
         },
         Ok(message_envelope::ConsumeResponse(envelope_produce_response)) => {
             info!("{}", envelope_produce_response.unwrap().get_topic_name().unwrap());
-            Command::Invalid { 
+            Ok(Command::Invalid { 
                 message: "Consume response is an invalid request".to_string()
-            }
+            })
         },
         Ok(message_envelope::ProduceResponse(envelope_consume_response)) => {
             info!("{}", envelope_consume_response.unwrap().get_topic_name().unwrap());
-            Command::Invalid { 
+            Ok(Command::Invalid { 
                 message: "Porduce response is an invalid request".to_string()
-            }
+            })
         },
         Err(::capnp::NotInSchema(_)) => {
             info!("Unable to parse cap n p message");
-            Command::Invalid { 
+            Ok(Command::Invalid { 
                 message: "Not in schema".to_string()
-            }
+            })
         }
     }
 }

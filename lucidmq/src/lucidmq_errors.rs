@@ -1,6 +1,32 @@
 use std::error::Error;
 use std::fmt;
 
+//------------Serialization Error--------------------
+#[derive(Debug, PartialEq)]
+pub struct ProtocolError {
+    details: String,
+}
+
+impl ProtocolError {
+    pub fn new(msg: &str) -> ProtocolError {
+        ProtocolError {
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for ProtocolError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for ProtocolError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
 //------------Server Error--------------------
 #[derive(Debug, PartialEq)]
 pub struct ServerError {
