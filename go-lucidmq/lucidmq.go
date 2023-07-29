@@ -1,4 +1,4 @@
-package main
+package lucidmq
 
 import (
 	"encoding/binary"
@@ -233,35 +233,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-
 	fmt.Println(responseBytes)
-
+	thang, err := responseParser(responseBytes)
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("%v", thang)
 }
-
-// func main() {
-// 	host := "localhost"
-// 	port := 6969
-// 	lmc, err := NewLucidmqClient(host, port)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-// 	bytes, err := topic_request_describe("topic1")
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	err = lmc.SendMessageBytes(bytes)
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	responseBytes, err := lmc.RecieveResponse()
-// 	if err != nil {
-// 		panic(err)
-// 	}
-
-// 	fmt.Println(responseBytes)
-
-// 	lmc.CloseClient()
-
-// }

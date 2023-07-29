@@ -1,7 +1,9 @@
-package main
+package lucidmq
 
 import (
 	"encoding/binary"
+	"errors"
+	"fmt"
 	"protocol"
 	"time"
 
@@ -209,7 +211,6 @@ func consume_request(topicName string, consumerGroup string, timeout uint64) ([]
 	}
 	framedMessageBytes := createMessageFrame(b)
 	return framedMessageBytes, nil
-
 }
 
 func createMessageFrame(msg []byte) []byte {
@@ -217,4 +218,70 @@ func createMessageFrame(msg []byte) []byte {
 	binary.LittleEndian.PutUint16(fullMsg, uint16(len(msg)))
 	fullMsg = append(fullMsg, msg...)
 	return fullMsg
+}
+
+func responseParser(msg []byte) (interface{}, error) {
+	var i interface{}
+	cpaMsg, err := capnp.UnmarshalPacked(msg)
+	if err != nil {
+		panic(err)
+	}
+	envelope, err := protocol.ReadRootMessageEnvelope(cpaMsg)
+	if err != nil {
+		panic(err)
+	}
+	switch envelopeType := envelope.Which(); envelopeType {
+	case protocol.MessageEnvelope_Which_topicResponse:
+		topicResponse, err := envelope.TopicResponse()
+		if err != nil {
+			panic(err)
+		}
+		topicName, err := topicResponse.TopicName()
+		if err != nil {
+			panic(err)
+		}
+		success := topicResponse.Success()
+		fmt.Println(topicName)
+		fmt.Println(success)
+		return i, nil
+	case protocol.MessageEnvelope_Which_produceResponse:
+		produceResponse, err := envelope.ProduceResponse()
+		if err != nil {
+			panic(err)
+		}
+		success := produceResponse.Success()
+		topicName, err := produceResponse.TopicName()
+		if err != nil {
+			panic(err)
+		}
+		offset := produceResponse.Offset()
+		produceResponseType := ProduceResponse{
+			success:   success,
+			topicName: topicName,
+			offset:    offset,
+		}
+		return produceResponseType, nil
+	case protocol.MessageEnvelope_Which_consumeResponse:
+		consumeResponse, err := envelope.ConsumeResponse()
+		if err != nil {
+			panic(err)
+		}
+		success := consumeResponse.Success()
+		topicName, err := consumeResponse.TopicName()
+		if err != nil {
+			panic(err)
+		}
+		messages, err := consumeResponse.Messages()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println(success)
+		fmt.Println(topicName)
+		fmt.Println(messages)
+		return i, nil
+	default:
+		fmt.Println(envelopeType)
+		fmt.Println("Message not valid")
+		return i, errors.New("message is invalid")
+	}
 }
