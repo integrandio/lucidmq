@@ -1,25 +1,47 @@
 package lucidmq
 
 type TopicCreateResponse struct {
-	success   bool
-	topicName string
+	Success   bool
+	TopicName string
 }
 
 type TopicDeleteResponse struct {
-	success   bool
-	topicName string
+	Success   bool
+	TopicName string
 }
 
-// type TopicDescribeResponse struct {
-// 	success           bool
-// 	topicName         string
-// 	maxSegmentBytes   uint64
-// 	maxRetentionBytes uint64
-// 	consumerGroups    []string
-// }
+type TopicDescribeResponse struct {
+	Success           bool
+	TopicName         string
+	MaxSegmentBytes   uint64
+	MaxRetentionBytes uint64
+	ConsumerGroups    []string
+}
+
+type TopicAllResponse struct {
+	Success   bool
+	TopicList []TopicList
+}
+
+type TopicList struct {
+	TopicName      string
+	ConsumerGroups []string
+}
 
 type ProduceResponse struct {
-	success   bool
-	topicName string
-	offset    uint64
+	Success   bool
+	TopicName string
+	Offset    uint64
+}
+
+type ConsumeResponse struct {
+	Success   bool
+	TopicName string
+	Messages  []Message
+}
+
+type Message struct {
+	Timestamp uint64
+	Key       []byte
+	Value     []byte
 }

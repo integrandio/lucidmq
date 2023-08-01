@@ -224,64 +224,174 @@ func responseParser(msg []byte) (interface{}, error) {
 	var i interface{}
 	cpaMsg, err := capnp.UnmarshalPacked(msg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	envelope, err := protocol.ReadRootMessageEnvelope(cpaMsg)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	switch envelopeType := envelope.Which(); envelopeType {
 	case protocol.MessageEnvelope_Which_topicResponse:
 		topicResponse, err := envelope.TopicResponse()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		topicName, err := topicResponse.TopicName()
-		if err != nil {
-			panic(err)
-		}
-		success := topicResponse.Success()
-		fmt.Println(topicName)
-		fmt.Println(success)
-		return i, nil
+		return topicResponseParser(topicResponse)
 	case protocol.MessageEnvelope_Which_produceResponse:
 		produceResponse, err := envelope.ProduceResponse()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		success := produceResponse.Success()
 		topicName, err := produceResponse.TopicName()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		offset := produceResponse.Offset()
 		produceResponseType := ProduceResponse{
-			success:   success,
-			topicName: topicName,
-			offset:    offset,
+			Success:   success,
+			TopicName: topicName,
+			Offset:    offset,
 		}
 		return produceResponseType, nil
 	case protocol.MessageEnvelope_Which_consumeResponse:
 		consumeResponse, err := envelope.ConsumeResponse()
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		success := consumeResponse.Success()
-		topicName, err := consumeResponse.TopicName()
-		if err != nil {
-			panic(err)
-		}
-		messages, err := consumeResponse.Messages()
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println(success)
-		fmt.Println(topicName)
-		fmt.Println(messages)
-		return i, nil
+		return parseConsumeResponse(consumeResponse)
 	default:
 		fmt.Println(envelopeType)
 		fmt.Println("Message not valid")
 		return i, errors.New("message is invalid")
 	}
+}
+
+func topicResponseParser(topicResponse protocol.TopicResponse) (interface{}, error) {
+	switch topicResponsetype := topicResponse.Which(); topicResponsetype {
+	case protocol.TopicResponse_Which_all:
+		success := topicResponse.Success()
+		topicResponseAll, err := topicResponse.All()
+		if err != nil {
+			return nil, err
+		}
+		var topicsList []TopicList
+		for i := 0; i < topicResponseAll.Len(); i++ {
+			topic := topicResponseAll.At(i)
+			topicName, err := topic.TopicName()
+			if err != nil {
+				return nil, err
+			}
+			consumerGroups, err := topic.ConsumerGroups()
+			if err != nil {
+				return nil, err
+			}
+			var cgs []string
+			for j := 0; j < consumerGroups.Len(); j++ {
+				consumerGroup, err := consumerGroups.At(j)
+				if err != nil {
+					return nil, err
+				}
+				cgs = append(cgs, consumerGroup)
+			}
+			topicsList = append(topicsList, TopicList{
+				TopicName:      topicName,
+				ConsumerGroups: cgs,
+			})
+		}
+		return TopicAllResponse{
+			Success:   success,
+			TopicList: topicsList,
+		}, nil
+	case protocol.TopicResponse_Which_create:
+		topicName, err := topicResponse.TopicName()
+		if err != nil {
+			return nil, err
+		}
+		success := topicResponse.Success()
+		topicCreateResponse := TopicCreateResponse{
+			Success:   success,
+			TopicName: topicName,
+		}
+		return topicCreateResponse, nil
+	case protocol.TopicResponse_Which_delete:
+		topicName, err := topicResponse.TopicName()
+		if err != nil {
+			return nil, err
+		}
+		success := topicResponse.Success()
+		topicDeleteResponse := TopicDeleteResponse{
+			Success:   success,
+			TopicName: topicName,
+		}
+		return topicDeleteResponse, nil
+	case protocol.TopicResponse_Which_describe:
+		topicName, err := topicResponse.TopicName()
+		if err != nil {
+			return nil, err
+		}
+		success := topicResponse.Success()
+		topicResponseDescribe := topicResponse.Describe()
+		maxSegmentBytes := topicResponseDescribe.MaxSegmentBytes()
+		maxRetentionBytes := topicResponseDescribe.MaxRetentionBytes()
+		consumerGroups, err := topicResponseDescribe.ConsumerGroups()
+		if err != nil {
+			return nil, err
+		}
+		var cgs []string
+		for i := 0; i < consumerGroups.Len(); i++ {
+			cg, err := consumerGroups.At(i)
+			if err != nil {
+				return nil, err
+			}
+			cgs = append(cgs, cg)
+		}
+		topicDescribeResponse := TopicDescribeResponse{
+			Success:           success,
+			TopicName:         topicName,
+			MaxSegmentBytes:   maxSegmentBytes,
+			MaxRetentionBytes: maxRetentionBytes,
+			ConsumerGroups:    cgs,
+		}
+		return topicDescribeResponse, nil
+	default:
+		return nil, errors.New("topic response type is invalid")
+	}
+}
+
+func parseConsumeResponse(consumeResponse protocol.ConsumeResponse) (interface{}, error) {
+	success := consumeResponse.Success()
+	topicName, err := consumeResponse.TopicName()
+	if err != nil {
+		return nil, err
+	}
+	messages, err := consumeResponse.Messages()
+	if err != nil {
+		return nil, err
+	}
+	var msgs []Message
+	for i := 0; i < messages.Len(); i++ {
+		message := messages.At(i)
+		key, err := message.Key()
+		if err != nil {
+			return nil, err
+		}
+		value, err := message.Value()
+		if err != nil {
+			return nil, err
+		}
+		ts := message.Timestamp()
+		msg := Message{
+			Timestamp: ts,
+			Key:       key,
+			Value:     value,
+		}
+		msgs = append(msgs, msg)
+	}
+
+	return ConsumeResponse{
+		Success:   success,
+		TopicName: topicName,
+		Messages:  msgs,
+	}, nil
 }
