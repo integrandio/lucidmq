@@ -70,76 +70,108 @@ func NewTopicManger(host string, port int) (*TopicManager, error) {
 	return topicManger, nil
 }
 
-func (topicManager *TopicManager) CreateTopic(topicName string) ([]byte, error) {
+func (topicManager *TopicManager) CreateTopic(topicName string) (TopicCreateResponse, error) {
+	var topicResponse TopicCreateResponse
 	bytes, err := topic_request_create(topicName)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 	err = topicManager.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
 	responseBytes, err := topicManager.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
-	return responseBytes, nil
+	responseMessage, err := responseParser(responseBytes)
+	if err != nil {
+		return topicResponse, err
+	}
+
+	topicResponse = responseMessage.(TopicCreateResponse)
+
+	return topicResponse, nil
 }
 
-func (topicManager *TopicManager) DescribeTopic(topicName string) ([]byte, error) {
+func (topicManager *TopicManager) DescribeTopic(topicName string) (TopicDescribeResponse, error) {
+	var topicResponse TopicDescribeResponse
 	bytes, err := topic_request_describe(topicName)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 	err = topicManager.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
 	responseBytes, err := topicManager.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
-	return responseBytes, nil
+	responseMessage, err := responseParser(responseBytes)
+	if err != nil {
+		return topicResponse, err
+	}
+
+	topicResponse = responseMessage.(TopicDescribeResponse)
+
+	return topicResponse, nil
 }
 
-func (topicManager *TopicManager) DeleteTopic(topicName string) ([]byte, error) {
+func (topicManager *TopicManager) DeleteTopic(topicName string) (TopicDeleteResponse, error) {
+	var topicResponse TopicDeleteResponse
 	bytes, err := topic_request_delete(topicName)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 	err = topicManager.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
 	responseBytes, err := topicManager.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
-	return responseBytes, nil
+	responseMessage, err := responseParser(responseBytes)
+	if err != nil {
+		return topicResponse, err
+	}
+
+	topicResponse = responseMessage.(TopicDeleteResponse)
+
+	return topicResponse, nil
 }
 
-func (topicManager *TopicManager) AllTopics() ([]byte, error) {
+func (topicManager *TopicManager) AllTopics() (TopicAllResponse, error) {
+	var topicResponse TopicAllResponse
 	bytes, err := topic_request_all()
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 	err = topicManager.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
 	responseBytes, err := topicManager.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return topicResponse, err
 	}
 
-	return responseBytes, nil
+	responseMessage, err := responseParser(responseBytes)
+	if err != nil {
+		return topicResponse, err
+	}
+
+	topicResponse = responseMessage.(TopicAllResponse)
+
+	return topicResponse, nil
 }
 
 type Producer struct {
@@ -158,21 +190,29 @@ func NewProducer(host string, port int) (*Producer, error) {
 	return producer, nil
 }
 
-func (producer *Producer) Produce(topicName string, key []byte, value []byte) ([]byte, error) {
+func (producer *Producer) Produce(topicName string, key []byte, value []byte) (ProduceResponse, error) {
+	var produceResponse ProduceResponse
 	bytes, err := produce_request(topicName, key, value)
 	if err != nil {
-		return []byte{}, err
+		return produceResponse, err
 	}
 	err = producer.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return produceResponse, err
 	}
 	responseBytes, err := producer.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return produceResponse, err
 	}
 
-	return responseBytes, nil
+	responseMessage, err := responseParser(responseBytes)
+	if err != nil {
+		return produceResponse, err
+	}
+
+	produceResponse = responseMessage.(ProduceResponse)
+
+	return produceResponse, nil
 }
 
 type Consumer struct {
@@ -193,50 +233,26 @@ func NewConsumer(host string, port int, timeout uint64) (*Consumer, error) {
 	return consumer, nil
 }
 
-func (consumer *Consumer) Consume(topicName string, consumerGroup string) ([]byte, error) {
+func (consumer *Consumer) Consume(topicName string, consumerGroup string) (ConsumeResponse, error) {
+	var consumeResponse ConsumeResponse
 	bytes, err := consume_request(topicName, consumerGroup, consumer.timeout)
 	if err != nil {
-		return []byte{}, err
+		return consumeResponse, err
 	}
 	err = consumer.LucidmqClient.SendMessageBytes(bytes)
 	if err != nil {
-		return []byte{}, err
+		return consumeResponse, err
 	}
 	responseBytes, err := consumer.LucidmqClient.RecieveResponse()
 	if err != nil {
-		return []byte{}, err
+		return consumeResponse, err
 	}
 
-	return responseBytes, nil
-}
-
-func main() {
-	host := "localhost"
-	port := 6969
-
-	// producer, err := NewProducer(host, port)
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	// responseBytes, err := producer.produce("topic1", []byte("key"), []byte("value"))
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	consumer, err := NewConsumer(host, port, 1)
+	responseMessage, err := responseParser(responseBytes)
 	if err != nil {
-		panic(err)
+		return consumeResponse, err
 	}
 
-	responseBytes, err := consumer.Consume("topic1", "cg3")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Println(responseBytes)
-	thang, err := responseParser(responseBytes)
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%v", thang)
+	consumeResponse = responseMessage.(ConsumeResponse)
+	return consumeResponse, nil
 }
