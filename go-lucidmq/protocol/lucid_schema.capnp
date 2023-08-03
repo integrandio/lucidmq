@@ -46,6 +46,8 @@ struct TopicsList {
   consumerGroups @1 :List(Text);
 }
 
+#-- Produce Messages
+
 struct ProduceRequest {
   topicName @0 :Text;
   messages @1 :List(Message);
@@ -56,6 +58,8 @@ struct ProduceResponse {
   topicName @1 :Text;
   offset @2 :UInt64;
 }
+
+# -- Consumer Messages
 
 struct ConsumeRequest {
   topicName @0 :Text;
