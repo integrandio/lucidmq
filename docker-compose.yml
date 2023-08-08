@@ -19,6 +19,7 @@ services:
       dockerfile: images/LucidmqIntegration.Dockerfile
     environment:
       - LUCIDMQ_SERVER_HOST=lucidmq-server
+      - LUCIDMQ_SERVER_PORT=6969
     depends_on:
       - lucidmq-server
     networks:

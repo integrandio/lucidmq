@@ -5,7 +5,7 @@ import random
 import os
 
 HOST = os.environ.get('LUCIDMQ_SERVER_HOST', '127.0.0.1')  # The server's hostname or IP address
-PORT = 6969  # The port used by the server
+PORT = int(os.environ.get('LUCIDMQ_SERVER_PORT', '6969'))  # The port used by the server
 
 def get_random_string(length):
     # choose from all lowercase letter
@@ -52,6 +52,14 @@ class TestTopics:
         topic_describe_result = topic_manager.describe_topic(topic_name)
         assert topic_describe_result['success'] == False
         assert topic_describe_result['topicName'] == topic_name
+
+    def test_delete_topic(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        topic_manager.create_topic(topic_name)
+        topic_delete_result = topic_manager.delete_topic(topic_name)
+        assert topic_delete_result['success'] == True
+        assert topic_delete_result['topicName'] == topic_name
     
 
     def test_delete_topic_dne(self):
@@ -86,8 +94,9 @@ class TestProducer:
         topic_create_result = topic_manager.create_topic(topic_name)
 
         for x in range(10):
+            key = bytes("key{0}".format(x), 'utf-8')
             value = bytes("value{0}".format(x), 'utf-8')
-            produce_request_result = producer.produce(topic_name, b'key', b'value')
+            produce_request_result = producer.produce(topic_name, key, value)
             assert produce_request_result['success'] == True
             assert produce_request_result['topicName'] == topic_name
             assert produce_request_result['offset'] == x
@@ -105,8 +114,9 @@ class TestProducer:
         topic_create_result = topic_manager.create_topic(topic_name)
 
         for x in range(30):
+            key = bytes("key{0}".format(x), 'utf-8')
             value = bytes("myextreamlyverylargevalue{0}".format(x), 'utf-8')
-            produce_request_result = producer.produce(topic_name, b'key', b'value')
+            produce_request_result = producer.produce(topic_name, key, value)
             assert produce_request_result['success'] == True
             assert produce_request_result['topicName'] == topic_name
             assert produce_request_result['offset'] == x
@@ -211,7 +221,7 @@ class TestConsumer:
         assert consumer_request_result['success'] == False
         assert consumer_request_result['topicName'] == topic_name
     
-    def test_consumer_messages_already_consumed(self):
+    def test_consumer_message_already_consumed(self):
         topic_name = get_random_string(10)
         topic_manager = TopicManager(HOST, PORT)
         producer = Producer(HOST, PORT)

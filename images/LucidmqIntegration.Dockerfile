@@ -1,5 +1,5 @@
 # Dockerfile for the building LucidMQ and LucidMQ CLI Continous Integration
-# This Dockerfile/Image is used for running unit tests in CI
+# This Dockerfile/Image is used for running integration tests in CI
 FROM registry.nocaply.com/python-base:latest
 
 WORKDIR /build

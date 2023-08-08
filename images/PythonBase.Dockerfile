@@ -41,12 +41,3 @@ RUN pyenv install 3.11 && \
     pyenv rehash
 
 RUN apt-get update
-
-# WORKDIR /build
-# COPY protocol /build/protocol
-# COPY lucidmq-py /build/lucidmq-py
-
-# WORKDIR /build/lucidmq-py
-# RUN pip3 install pycapnp && \
-#     pip3 install pytest
-# CMD ["pytest"]

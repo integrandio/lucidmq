@@ -1,8 +1,10 @@
 # Base Images
 
-In order to save on build time, we build base images that have all of our dependencies built in. 
+In order to save on build time, we build base images that have all of our dependencies built in in a multistep build process. 
 
-## How to build locally
+## How to build base files locally
+
+These commands are run from the LucidMQ root directory.
 
 Rust Base Image
 ```

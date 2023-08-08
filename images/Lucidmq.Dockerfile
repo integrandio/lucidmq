@@ -4,6 +4,7 @@ FROM registry.nocaply.com/lucidmq-base:latest
 WORKDIR /build
 # Copy the entire workspace
 COPY Cargo.toml /build
+COPY Cargo.lock /build
 COPY protocol /build/protocol
 COPY nolan /build/nolan
 COPY lucidmq /build/lucidmq
