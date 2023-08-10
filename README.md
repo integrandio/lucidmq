@@ -75,11 +75,20 @@ docker run -it -p 6969:6969 lucidmq
 
 #### Running the integration tests
 
-LucidMQ's integration tests run on the pipeline via every push to main. During local development it may be useful to verify that things are working as intended. Luckily the test infrastructure in bundled in docker compose. This allows for the intrgration test architecture to be is extreamly portable and easy to use.
+LucidMQ's integration tests run on the pipeline via every push to main. During local development it may be useful to verify that things are working as intended. Luckily the test infrastructure in bundled in docker compose. This allows for the intrgration test architecture to be is extreamly portable and easy to use. There are integration test suites for each client library.
 
-Run the integ tests using the following command:
+Pre-requisites:
+- Download and install docker
+- docker-compose also downloaded and installed
+
+Run the python integration tests using the following command:
 ```
-docker-compose up --build --exit-code-from test-runner
+docker-compose -f docker-compose-python-integration.yml up --build --exit-code-from test-runner
+```
+
+Run the golang integration tests using the following command:
+```
+docker-compose -f docker-compose-go-integration.yml up --build --exit-code-from test-runner
 ```
 
 ## Why do you need LucidMQ?

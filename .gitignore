@@ -6,7 +6,4 @@
 # Generated cap n proto does not need to bee checked in
 **/*_capnp.rs
 
-# Remove this when ready to run Go integ tests
-images/GoBase.Dockerfile
-
 lucidglue

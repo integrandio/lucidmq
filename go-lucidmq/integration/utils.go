@@ -3,15 +3,17 @@ package integration
 import (
 	"fmt"
 	"math/rand"
+	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 	"testing"
 	"time"
 )
 
-const HOST = "localhost"
-const PORT = 6969
+var HOST = "localhost"
+var PORT = 6969
 
 const CHARSET = "abcdefghijklmnopqrstuvwxyz" +
 	"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
@@ -51,4 +53,21 @@ func generateRandomString(length int) string {
 		b[i] = CHARSET[seededRand.Intn(len(CHARSET))]
 	}
 	return string(b)
+}
+
+func getSetGlobalVariables() {
+	//Set the host
+	host, present := os.LookupEnv("LUCIDMQ_SERVER_HOST")
+	if present {
+		HOST = host
+	}
+
+	port, present := os.LookupEnv("LUCIDMQ_SERVER_PORT")
+	if present {
+		portInt, err := strconv.Atoi(port)
+		if err != nil {
+			return
+		}
+		PORT = portInt
+	}
 }

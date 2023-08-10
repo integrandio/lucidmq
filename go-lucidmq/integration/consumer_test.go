@@ -7,6 +7,10 @@ import (
 	"lucidmq.com/lucidmq/go-lucidmq"
 )
 
+func init() {
+	getSetGlobalVariables()
+}
+
 // Consumer tests
 func TestConsume1Message(t *testing.T) {
 	topicManger, err := lucidmq.NewTopicManger(HOST, PORT)
