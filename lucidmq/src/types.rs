@@ -25,7 +25,9 @@ pub enum Command{
         capmessagedata: Vec<u8>
     },
     Invalid {
-        message: String
+        conn_id: String,
+        error_message: String,
+        capmessage_data: Vec<u8>
     }
 }
 
@@ -56,10 +58,11 @@ impl fmt::Debug for Command {
                 .field("Connection ID", &conn_id)
                 .finish()
             },
-            Command::Invalid { message } => {
+            Command::Invalid { conn_id, error_message, capmessage_data: _} => {
                 f.debug_struct("Command")
                 .field("Command Type", &"Invalid")
-                .field("Message", &message)
+                .field("Connection ID", &conn_id)
+                .field("Error Message", &error_message)
                 .finish()
             },
         }

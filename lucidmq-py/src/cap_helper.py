@@ -99,5 +99,7 @@ def response_parser(data: bytes):
             return message_envelope.produceResponse
         case 'consumeResponse':
             return message_envelope.consumeResponse
+        case 'invalidResponse':
+            return message_envelope.invalidResponse
         case _:
             print("Invalid envelope type")

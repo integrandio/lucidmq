@@ -1,7 +1,4 @@
-using Go = import "/go.capnp";
 @0xa0042efeeed7bb94;
-$Go.package("protocol");
-$Go.import ("lucidmq/protocol");
 
 # --- Message Envelope ----
 struct MessageEnvelope {
@@ -12,6 +9,7 @@ struct MessageEnvelope {
     produceResponse @3 :ProduceResponse;
     consumeRequest @4 :ConsumeRequest;
     consumeResponse @5 :ConsumeResponse;
+    invaidResponse @6 :InvaidResponse;
   }
 }
 
@@ -78,4 +76,10 @@ struct Message {
   timestamp @0 :UInt64;
   key @1 :Data;
   value @2 :Data;
+}
+
+# Invalid message
+
+struct InvalidResponse {
+  message @0 :Text;
 }

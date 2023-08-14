@@ -17,3 +17,13 @@ $ pip3 -r install requirements.txt
 ```
 PYTHONPATH=src pytest
 ```
+
+To see tests with test capturing/prints use
+```
+PYTHONPATH=src pytest -s
+```
+
+To run a specific class
+```
+PYTHONPATH=src pytest test_lucidmq.py::{classname}
+```

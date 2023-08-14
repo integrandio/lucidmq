@@ -9,10 +9,12 @@ struct MessageEnvelope {
     produceResponse @3 :ProduceResponse;
     consumeRequest @4 :ConsumeRequest;
     consumeResponse @5 :ConsumeResponse;
+    invalidResponse @6 :InvalidResponse;
   }
 }
 
-# ----- Topic Messages --------
+#----- Topic Messages -----
+
 struct TopicRequest {
   topicName @0 :Text;
   union {
@@ -43,6 +45,8 @@ struct TopicsList {
   consumerGroups @1 :List(Text);
 }
 
+#----- Produce Messages -----
+
 struct ProduceRequest {
   topicName @0 :Text;
   messages @1 :List(Message);
@@ -53,6 +57,8 @@ struct ProduceResponse {
   topicName @1 :Text;
   offset @2 :UInt64;
 }
+
+#----- Consumer Messages -----
 
 struct ConsumeRequest {
   topicName @0 :Text;
@@ -70,4 +76,10 @@ struct Message {
   timestamp @0 :UInt64;
   key @1 :Data;
   value @2 :Data;
+}
+
+# Invalid message
+
+struct InvalidResponse {
+  message @0 :Text;
 }

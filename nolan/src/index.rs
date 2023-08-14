@@ -8,13 +8,15 @@ use std::io::prelude::*;
 use std::io::ErrorKind;
 use std::io::SeekFrom;
 
-/// Basic data structure that holds our data in our index on disk
+/// An entry is metadata representation of an entry of the commitlog, it's used by the index to do quick lookups by offset.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct Entry {
     pub start: u32,
     pub total: u32,
 }
 
+/// Data structure that allows us to map segment entries to offsets for quick lookups. 
+/// This is stored on disk and on startup allows us to build our commitlog representation.
 pub struct Index {
     pub file_name: String,
     entries: Vec<Entry>,

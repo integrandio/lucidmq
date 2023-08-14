@@ -114,7 +114,8 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
                 break;
             }
         };
-        let msg = parse_request(conn_id.clone(), message_buff.clone()).expect("Unable to parse message");
+        let msg =
+            parse_request(conn_id.clone(), message_buff.clone()).expect("Unable to parse message");
         sender.send(msg).await.expect("Unble to send message");
     }
 }
@@ -128,8 +129,16 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
                 conn_id,
                 capmessagedata,
             } => {
-                response_message = capmessagedata;
                 id = conn_id;
+                response_message = capmessagedata;
+            }
+            Command::Invalid {
+                conn_id,
+                error_message: _,
+                capmessage_data,
+            } => {
+                id = conn_id;
+                response_message = capmessage_data;
             }
             _ => {
                 error!("Command not good");

@@ -2,6 +2,12 @@
 
 This subdirectory contains the library code for LucidMQ. LucidMQ is a library that implements event streaming directly into your application in a brokerless fashion. There is no external processes running, just import LucidMQ and start passing message though to your different applications that are also using LucidMQ.
 
+## How to Generate Schema
+
+```
+cargo build
+```
+
 ## Running the Server Instance
 
 ```

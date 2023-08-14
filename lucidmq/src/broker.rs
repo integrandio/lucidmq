@@ -1,6 +1,6 @@
 use crate::cap_n_proto_helper::{
     new_consume_response, new_produce_response, new_topic_response_create,
-    new_topic_response_delete, new_topic_response_describe, new_topic_response_all
+    new_topic_response_delete, new_topic_response_describe, new_topic_response_all, new_invalid_response
 };
 use crate::lucid_schema_capnp::{consume_request, produce_request, topic_request};
 use crate::{
@@ -110,12 +110,24 @@ impl Broker {
                         capmessagedata: data,
                     }
                 }
-                _ => {
-                    warn!("Unable to parse command");
+                Command::Invalid { conn_id, error_message,  capmessage_data:_} => {
+                    let data = self.handle_invalid_message(&error_message).await.unwrap();
                     Command::Invalid {
-                        message: "invalid".to_string(),
+                        conn_id: conn_id,
+                        error_message: error_message,
+                        capmessage_data: data
                     }
                 }
+                Command::Response { conn_id, capmessagedata:_ } => {
+                    warn!("Response type unexected command");
+                    let data = self.handle_invalid_message("Response message is invalid").await.unwrap();
+                    Command::Invalid {
+                        conn_id: conn_id,
+                        error_message: "Response message is invalid".to_string(),
+                        capmessage_data: data
+                    }
+                    
+                },
             };
             let res = sender.send(response_command).await;
             match res {
@@ -382,6 +394,11 @@ impl Broker {
                 Ok(new_produce_response(topic_name, 0, false))
             }
         }
+    }
+
+    async fn handle_invalid_message(&self, message_text: &str) -> Result<Vec<u8>, BrokerError> {
+        let data = new_invalid_response(message_text);
+        Ok(data)
     }
 
     fn check_topics(&mut self, topic_to_find: &str) -> Option<usize> {
