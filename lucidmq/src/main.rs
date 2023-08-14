@@ -18,6 +18,8 @@ use types::{RecieverType, SenderType};
 
 #[tokio::main]
 pub async fn main() {
+    // can pass in 0 - 5 based on the level you want
+    //let debugLevel = get_env_variable("DEBUG", "3");
     Builder::new().filter_level(LevelFilter::Info).init();
     info!("Starting lucidmq");
     // Initialize all of our channels

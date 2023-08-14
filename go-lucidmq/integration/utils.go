@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var HOST = "localhost"
+var HOST = "127.0.0.1"
 var PORT = 6969
 
 const CHARSET = "abcdefghijklmnopqrstuvwxyz" +
