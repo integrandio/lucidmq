@@ -86,7 +86,7 @@ func (topicManager *TopicManager) CreateTopic(topicName string) (TopicCreateResp
 		return topicResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return topicResponse, err
 	}
@@ -112,7 +112,7 @@ func (topicManager *TopicManager) DescribeTopic(topicName string) (TopicDescribe
 		return topicResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return topicResponse, err
 	}
@@ -138,7 +138,7 @@ func (topicManager *TopicManager) DeleteTopic(topicName string) (TopicDeleteResp
 		return topicResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return topicResponse, err
 	}
@@ -164,7 +164,7 @@ func (topicManager *TopicManager) AllTopics() (TopicAllResponse, error) {
 		return topicResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return topicResponse, err
 	}
@@ -205,7 +205,7 @@ func (producer *Producer) Produce(topicName string, key []byte, value []byte) (P
 		return produceResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return produceResponse, err
 	}
@@ -248,7 +248,7 @@ func (consumer *Consumer) Consume(topicName string, consumerGroup string) (Consu
 		return consumeResponse, err
 	}
 
-	responseMessage, err := responseParser(responseBytes)
+	responseMessage, err := ResponseParser(responseBytes)
 	if err != nil {
 		return consumeResponse, err
 	}

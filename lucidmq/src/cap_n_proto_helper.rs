@@ -27,7 +27,7 @@ pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> 
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -75,7 +75,7 @@ pub fn new_topic_response_describe(
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -114,7 +114,7 @@ pub fn new_topic_response_all(is_success: bool, topics_datas: Vec<SimpleTopic>) 
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -137,7 +137,7 @@ pub fn new_topic_response_delete(topic_name: &str, is_success: bool) -> Vec<u8> 
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -160,7 +160,7 @@ pub fn new_produce_response(topic_name: &str, last_offset: u64, is_success: bool
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -206,7 +206,7 @@ pub fn new_consume_response(
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 }
@@ -218,28 +218,32 @@ pub fn new_invalid_response(message_text: &str) -> Vec<u8>{
     let mut request_message = Builder::new_default();
     let mut invalid_reponse = request_message.init_root::<invalid_response::Builder>();
 
-    invalid_reponse.set_message(message_text);
+    invalid_reponse.set_error_message(message_text);
 
     message_envelope.set_invalid_response(invalid_reponse.reborrow_as_reader()).expect("unable to set envelope message");
 
     let mut buffer = vec![];
     serialize_packed::write_message(&mut buffer, &response_message_envelope)
         .expect("Unable to serialize packed message");
-    let framed_message = create_message_frame(buffer);
+    let framed_message = create_message_frame(buffer).unwrap();
 
     return framed_message;
 
 }
 
-fn create_message_frame(mut original_message: Vec<u8>) -> Vec<u8> {
-    let size_u16 = u16::try_from(original_message.len()).unwrap();
+fn create_message_frame(mut original_message: Vec<u8>) -> Result<Vec<u8>, ProtocolError> {
+    // Convert to a u16 so that we have a byte representation of only 2 digits?
+    let size_u16 = u16::try_from(original_message.len()).map_err(|e| {
+        error!("{}", e);
+        ProtocolError::new("Unable to convert message size to u16")
+    })?;
     let thing = size_u16.to_le_bytes();
     // Append the size in bytes to the begining of the vector
     original_message.splice(0..0, thing.iter().cloned());
-    return original_message;
+    Ok(original_message)
 }
 
-pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, ProtocolError> {
+pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, capnp::Error> {
     // Deserializing object
     let reader = match serialize_packed::read_message(data.as_slice(), ReaderOptions::new()) {
         Ok(read) => read,
@@ -253,14 +257,14 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
                 })
         }
     };
-    let message_envelope = reader.get_root::<message_envelope::Reader>().unwrap();
+    let message_envelope = reader.get_root::<message_envelope::Reader>()?;
     match message_envelope.which() {
         Ok(message_envelope::TopicRequest(envelope_topic_request)) => {
             let topic_request =
-                envelope_topic_request.expect("Unable to get topic request from envelope");
+                envelope_topic_request?;
             // TODO: this does a copy, fix this to not do a copy
             let mut message = TypedBuilder::<topic_request::Owned>::new_default();
-            message.set_root(topic_request).unwrap();
+            message.set_root(topic_request)?;
             let typed_reader = TypedReader::from(message);
             Ok(Command::TopicRequest {
                 conn_id: conn_id,
@@ -271,15 +275,14 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             let produce_request =
                 envelope_produce_request.expect("Unable to get produce request from envelope");
             let _messages = produce_request
-                .get_messages()
-                .expect("Unable to get message from produce request");
+                .get_messages()?;
             // for msg in _messages.into_iter() {
             //     info!("KEY: {:?}, VALUE: {:?}, TIMESTAMP: {}", msg.get_key().unwrap(), msg.get_value().unwrap(), msg.get_timestamp());
             // }
             //let topic_name = produce_request.get_topic_name().expect("Unable to get topic name from produce request");
             // info!("{}", topic_name);
             let mut message = TypedBuilder::<produce_request::Owned>::new_default();
-            message.set_root(produce_request).unwrap();
+            message.set_root(produce_request)?;
             let typed_reader = TypedReader::from(message);
             Ok(Command::ProduceRequest {
                 conn_id: conn_id,
@@ -287,9 +290,9 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             })
         }
         Ok(message_envelope::ConsumeRequest(envelope_consume_request)) => {
-            let consume_request = envelope_consume_request.unwrap();
+            let consume_request = envelope_consume_request?;
             let mut message = TypedBuilder::<consume_request::Owned>::new_default();
-            message.set_root(consume_request).unwrap();
+            message.set_root(consume_request)?;
             let typed_reader = TypedReader::from(message);
             Ok(Command::ConsumeRequest {
                 conn_id: conn_id,
@@ -297,7 +300,7 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             })
         }
         Ok(message_envelope::TopicResponse(envelope_topic_response)) => {
-            info!("{}", envelope_topic_response.unwrap().get_topic_name().unwrap());
+            info!("{}", envelope_topic_response?.get_topic_name()?);
             Ok(Command::Invalid { 
                 conn_id: conn_id,
                 error_message: "Topic Response is an invalid request".to_string(),
@@ -305,7 +308,7 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             })
         }
         Ok(message_envelope::ConsumeResponse(envelope_consume_response)) => {
-            info!("{}",envelope_consume_response.unwrap().get_topic_name().unwrap());
+            info!("{}",envelope_consume_response?.get_topic_name()?);
             Ok(Command::Invalid { 
                 conn_id: conn_id,
                 error_message: "Consume response is an invalid request".to_string(),
@@ -313,7 +316,7 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             })
         }
         Ok(message_envelope::ProduceResponse(envelope_produce_response)) => {
-            info!("{}", envelope_produce_response.unwrap().get_topic_name().unwrap());
+            info!("{}", envelope_produce_response?.get_topic_name()?);
             Ok(Command::Invalid { 
                 conn_id: conn_id,
                 error_message: "Produce response is an invalid request".to_string(),
@@ -321,7 +324,7 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, Protocol
             })
         }
         Ok(message_envelope::InvalidResponse(envelope_invalid_response)) => {
-            info!("{}", envelope_invalid_response.unwrap().get_message().unwrap());
+            info!("{}", envelope_invalid_response?.get_error_message()?);
             Ok(Command::Invalid { 
                 conn_id: conn_id,
                 error_message: "Invalid response is an invalid request".to_string(),

@@ -220,7 +220,7 @@ func createMessageFrame(msg []byte) []byte {
 	return fullMsg
 }
 
-func responseParser(msg []byte) (interface{}, error) {
+func ResponseParser(msg []byte) (interface{}, error) {
 	var i interface{}
 	cpaMsg, err := capnp.UnmarshalPacked(msg)
 	if err != nil {
@@ -260,6 +260,18 @@ func responseParser(msg []byte) (interface{}, error) {
 			return nil, err
 		}
 		return parseConsumeResponse(consumeResponse)
+	case protocol.MessageEnvelope_Which_invalidResponse:
+		invalidResponse, err := envelope.InvalidResponse()
+		if err != nil {
+			return nil, err
+		}
+		errorMessage, err := invalidResponse.ErrorMessage()
+		if err != nil {
+			return nil, err
+		}
+		return InvalidResponse{
+			ErrorMessage: errorMessage,
+		}, nil
 	default:
 		fmt.Println(envelopeType)
 		fmt.Println("Message not valid")

@@ -76,6 +76,11 @@ pub fn parse_response(data: Vec<u8>) -> String {
             write!(s, "Messages: {:?}\n", message_vec).unwrap();
             return s;
         },
+        Ok(message_envelope::Which::InvalidResponse(envelope_invalid_request)) => {
+            let invalid_response = envelope_invalid_request.unwrap();
+            let invalid_response_text = invalid_response.get_error_message().unwrap();
+            return invalid_response_text.to_string();
+        }
         Ok(message_envelope::TopicRequest(_envelope_topic_request)) => {
             return "Topic Request is an invalid response type\n".to_string();
         },
@@ -85,9 +90,6 @@ pub fn parse_response(data: Vec<u8>) -> String {
         Ok(message_envelope::ProduceRequest(_envelope_consume_request)) => {
             return "Produce request is an invalid request type\n".to_string();
         },
-        Ok(message_envelope::Which::InvalidResponse(_envelope_invalid_request)) => {
-            return "Invalid response recieved, message might have been malformed".to_string();
-        }
         Err(::capnp::NotInSchema(_)) => {
             return "Unable to parse cap n p message\n".to_string();
         }

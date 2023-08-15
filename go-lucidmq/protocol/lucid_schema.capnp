@@ -12,6 +12,7 @@ struct MessageEnvelope {
     produceResponse @3 :ProduceResponse;
     consumeRequest @4 :ConsumeRequest;
     consumeResponse @5 :ConsumeResponse;
+    invalidResponse @6 :InvalidResponse;
   }
 }
 
@@ -78,4 +79,10 @@ struct Message {
   timestamp @0 :UInt64;
   key @1 :Data;
   value @2 :Data;
+}
+
+# Invalid message
+
+struct InvalidResponse {
+  errorMessage @0 :Text;
 }

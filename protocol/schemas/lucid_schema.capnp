@@ -81,5 +81,5 @@ struct Message {
 # Invalid message
 
 struct InvalidResponse {
-  message @0 :Text;
+  errorMessage @0 :Text;
 }

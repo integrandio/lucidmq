@@ -45,3 +45,7 @@ type Message struct {
 	Key       []byte
 	Value     []byte
 }
+
+type InvalidResponse struct {
+	ErrorMessage string
+}
