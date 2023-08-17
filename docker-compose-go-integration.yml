@@ -16,7 +16,7 @@ services:
     image: lucidmq-test
     build: 
       context: .
-      dockerfile: images/GoBase.Dockerfile
+      dockerfile: images/GoIntegration.Dockerfile
     environment:
       - LUCIDMQ_SERVER_HOST=lucidmq-server
       - LUCIDMQ_SERVER_PORT=6969

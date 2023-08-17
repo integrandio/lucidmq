@@ -15,3 +15,8 @@ Python Base Image
 ```
 docker build -f images/PythonBase.Dockerfile -t python-base .
 ```
+
+Go Base Image
+```
+docker build -f images/GoBase.Dockerfile -t go-base .
+```

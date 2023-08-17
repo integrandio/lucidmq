@@ -7,7 +7,7 @@ use crate::topic::SimpleTopic;
 use crate::types::Command;
 use capnp::message::{Builder, ReaderOptions, TypedBuilder, TypedReader};
 use capnp::{serialize, serialize_packed};
-use log::{error, info};
+use log::{error, info, warn};
 
 pub fn new_topic_response_create(topic_name: &str, is_success: bool) -> Vec<u8> {
     let mut response_message_envelope = Builder::new_default();
@@ -234,7 +234,7 @@ pub fn new_invalid_response(message_text: &str) -> Vec<u8>{
 fn create_message_frame(mut original_message: Vec<u8>) -> Result<Vec<u8>, ProtocolError> {
     // Convert to a u16 so that we have a byte representation of only 2 digits?
     let size_u16 = u16::try_from(original_message.len()).map_err(|e| {
-        error!("{}", e);
+        error!("Error when converting message size to u16 {}", e);
         ProtocolError::new("Unable to convert message size to u16")
     })?;
     let thing = size_u16.to_le_bytes();
@@ -248,7 +248,7 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, capnp::E
     let reader = match serialize_packed::read_message(data.as_slice(), ReaderOptions::new()) {
         Ok(read) => read,
         Err(err) => {
-            error!("{}", err);
+            warn!("Error when attempting to read message from stream[capnperror {}]", err);
             return Ok(
                 Command::Invalid { 
                     conn_id: conn_id,

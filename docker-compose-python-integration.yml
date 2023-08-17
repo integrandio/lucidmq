@@ -16,7 +16,7 @@ services:
     image: lucidmq-test
     build: 
       context: .
-      dockerfile: images/LucidmqIntegration.Dockerfile
+      dockerfile: images/PythonIntegration.Dockerfile
     environment:
       - LUCIDMQ_SERVER_HOST=lucidmq-server
       - LUCIDMQ_SERVER_PORT=6969

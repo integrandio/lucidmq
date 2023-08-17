@@ -14,6 +14,11 @@ cargo build
 cargo run
 ```
 
+Run with logging enabled(valid levels are `debug`, `info`, `warn`,  and `error`)
+```
+RUST_LOG=info cargo run
+```
+
 > Interested in contributing to LucidMQ? Get familiar with how it works and the terminology.
 
 ## How Does LucidMQ work?

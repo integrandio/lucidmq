@@ -10,17 +10,14 @@ mod types;
 
 use std::env;
 
-use env_logger::Builder;
+use env_logger;
 use log::info;
-use log::LevelFilter;
 use tokio::sync::mpsc;
 use types::{RecieverType, SenderType};
 
 #[tokio::main]
 pub async fn main() {
-    // can pass in 0 - 5 based on the level you want
-    //let debugLevel = get_env_variable("DEBUG", "3");
-    Builder::new().filter_level(LevelFilter::Info).init();
+    env_logger::init();
     info!("Starting lucidmq");
     // Initialize all of our channels
     let request_channel_sender: SenderType;

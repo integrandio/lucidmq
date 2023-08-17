@@ -24,7 +24,7 @@ LucidMQ is a streaming platform that focuses on providing low configuration and 
 
 ### Repo Structure
 
-The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. `Lucidmq-py` provides a client library for Python as well as integration tests for LucidMQ.
+The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. `lucidmq-py` and `go-lucidmq` provides client libraries for Python and Go respectively. These clients also have their own integration tests suites to do regression testing and verify correctness.
 
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq          # Lucidmq broker and server
@@ -100,7 +100,7 @@ LucidMQ's main goal is to be the easiest message/event broker to run and maintai
 - Start running instances of LucidMQ and report bugs
 - Issues will be added and tagged for anyone looking to get their hands dirty
 - Assist with documentation
-- Write unit and integration test
+- Write unit and integration tests
 
 Help realize the future of a low frustration ops experience of a message broker.
 
