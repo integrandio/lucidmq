@@ -1,4 +1,4 @@
-use log::{error, info};
+use log::{error, info, debug};
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
 use std::io;
@@ -68,12 +68,12 @@ impl LucidTcpServer {
 }
 
 async fn handle_connection(stream: TcpStream, peermap: Arc<PeerMap>, sender: SenderType) {
-    let id = generate_connection_string();
+    let id: String = generate_connection_string();
     let (rx, tx) = stream.into_split();
     peermap.lock().await.insert(id.clone(), tx);
     handle_request(id.clone(), rx, sender).await;
     peermap.lock().await.remove(&id);
-    info!("Exiting");
+    info!("Connection for {} terminatied", &id);
 }
 
 async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType) {
@@ -103,8 +103,8 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
 
         let message_bytes_read = recv.try_read(message_buff);
         match message_bytes_read {
-            Ok(_total) => {
-                // info!("Second Bytes recieved {:?} size {}", message_buff, total);
+            Ok(total) => {
+                debug!("Second Bytes recieved {:?} size {}", message_buff, total);
             }
             Err(ref e) if e.kind() == io::ErrorKind::WouldBlock => {
                 continue;
@@ -114,9 +114,9 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
                 break;
             }
         };
-        let msg =
+        let command =
             parse_request(conn_id.clone(), message_buff.clone()).expect("Unable to parse message");
-        sender.send(msg).await.expect("Unble to send message");
+        sender.send(command).await.expect("Unble to send message");
     }
 }
 

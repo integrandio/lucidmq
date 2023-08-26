@@ -21,7 +21,7 @@ import lucid_schema_capnp
 #         case topic_request_type.DESCRIBE
 
 #### All topic requests
-def topic_request_describe(topic_name: str):
+def topic_request_describe(topic_name: str) -> bytes:
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
     topic_request.topicName = topic_name
     topic_request.describe = None
@@ -30,7 +30,7 @@ def topic_request_describe(topic_name: str):
     message_envelope.topicRequest = topic_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
-def topic_request_create(topic_name: str):
+def topic_request_create(topic_name: str) -> bytes:
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
     topic_request.topicName = topic_name
     topic_request.create = None
@@ -39,7 +39,7 @@ def topic_request_create(topic_name: str):
     message_envelope.topicRequest = topic_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
-def topic_request_delete(topic_name: str):
+def topic_request_delete(topic_name: str) -> bytes:
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
     topic_request.topicName = topic_name
     topic_request.delete = None
@@ -48,7 +48,7 @@ def topic_request_delete(topic_name: str):
     message_envelope.topicRequest = topic_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
-def topic_request_all():
+def topic_request_all() -> bytes:
     topic_request = lucid_schema_capnp.TopicRequest.new_message()
     topic_request.topicName = "placeholder"
     topic_request.all = None
@@ -57,7 +57,7 @@ def topic_request_all():
     message_envelope.topicRequest = topic_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
-def produce_request(topic_name: str, key: bytes, value: bytes):
+def produce_request(topic_name: str, key: bytes, value: bytes) -> bytes:
     produce_request = lucid_schema_capnp.ProduceRequest.new_message()
     produce_request.topicName = topic_name
     messages = produce_request.init('messages', 1)
@@ -73,7 +73,7 @@ def produce_request(topic_name: str, key: bytes, value: bytes):
     message_envelope.produceRequest = produce_request
     return create_message_frame(message_envelope.to_bytes_packed())
 
-def consume_request(topic_name: str, consumer_group: str, timeout: int):
+def consume_request(topic_name: str, consumer_group: str, timeout: int) -> bytes:
     consume_request = lucid_schema_capnp.ConsumeRequest.new_message()
     consume_request.topicName = topic_name
     consume_request.consumerGroup = consumer_group
@@ -84,10 +84,10 @@ def consume_request(topic_name: str, consumer_group: str, timeout: int):
     return create_message_frame(message_envelope.to_bytes_packed())
 
 
-def create_message_frame(data: bytes):
-    num_bytes = len(data)
+def create_message_frame(orginal_data: bytes) -> bytes:
+    num_bytes = len(orginal_data)
     size_in_bytes = num_bytes.to_bytes(2, byteorder = 'little')
-    return size_in_bytes + data
+    return size_in_bytes + orginal_data
 
 def response_parser(data: bytes):
     message_envelope = lucid_schema_capnp.MessageEnvelope.from_bytes_packed(data)

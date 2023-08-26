@@ -23,4 +23,4 @@ capnp compile -I {/path/to/go-capnp/std} -ogo protocol/lucid_schema.capnp
 
 1. Go to the integration directory
 2. Run `go test -c -o integration`
-3. Run the binary `./integration` (add the `-test.v` flag to enable output from tests) 
+3. Run the binary `./integration` (add the `-test.v` flag to enable output from tests)  

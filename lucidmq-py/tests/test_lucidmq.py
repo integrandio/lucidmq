@@ -267,3 +267,38 @@ class TestConsumer:
 
         # Delete the topic to clean up
         topic_delete_result = topic_manager.delete_topic(topic_name)
+
+    def test_consumer_large_message(self):
+        topic_name = get_random_string(10)
+        topic_manager = TopicManager(HOST, PORT)
+        producer = Producer(HOST, PORT)
+        consumer = Consumer(HOST, PORT, 100)
+        # Create a topic to set up
+        topic_create_result = topic_manager.create_topic(topic_name)
+        
+        keys_sent = []
+        
+        # Real life request
+        value = b'{"data": ["Iggy Azalea", "DaBaby", "21 Savage", "Smokepurpp", "Tee Grizzly", "Quando Rondo", "Drake", "NLE Choppa", "Young Dolph", "Lil Nas X", "Nav", "iann dior", "NoCap", "Gunna", "Russ", "Nipsey Hussle", "Don Toliver", "2 Chainz", "Lil Durk", "J Balvin", "YNW Melly", "Tyga", "Juice WRLD", "Mac Miller", "Roddy Ricch", "Lil Baby", "Trippie Redd", "Megan Thee Stallion", "Lil Mosey", "French Montana", "Pop Smoke", "Pooh Shiesty", "A Boogie wit Da Hoddie", "Kevin Gates", "King Von", "Rich the Kid", "Rae Sremmurd", "Internet Money", "Young Thug", "Gucci Mane", "88Glam", "Kodak Black", "Lil Yachty", "Chris Brown", "Polo G", "Travis Scott", "Lil Pump", "Fivio Foreign", "Lil Tecca", "Ugly God", "Moneybagg Yo", "Lil Uzi Vert", "Migos", "Jack Harlow", "Ozuna"], "status": "success"}'
+
+        for x in range(10):
+            key = bytes('key{}'.format(x), 'utf-8')
+            keys_sent.append(key)
+            #values_sent.append(value)
+            # Produce message to our topic
+            produce_request_result = producer.produce(topic_name, key, value)
+
+        consumer_request_result = consumer.consume(topic_name, "cg1")
+
+        # Check the wraper around consumer request
+        assert consumer_request_result['success'] == True
+        assert consumer_request_result['topicName'] == topic_name
+        
+        assert len(consumer_request_result['messages']) == 10
+        for i in range(len(consumer_request_result['messages'])):
+            message = consumer_request_result['messages'][i]
+            assert keys_sent[i] ==  message['key']
+            assert value ==  message['value']
+    
+        # Delete the topic to clean up
+        topic_delete_result = topic_manager.delete_topic(topic_name)

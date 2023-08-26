@@ -179,8 +179,8 @@ impl Broker {
                 let topic = Topic::new(
                     topic_name.to_string(),
                     self.base_directory.clone(),
-                    1000,
-                    10000,
+                    100000, //100kb
+                    1000000, //1mb
                 );
                 fs::create_dir_all(&topic.directory).map_err(|e| {
                     error!("{}", e);
@@ -274,7 +274,10 @@ impl Broker {
     }
 
     fn handle_all_topic(&mut self) -> Result<Vec<u8>, BrokerError> {
-        if self.topics.read().expect("unable to get read lock").is_empty(){
+        if self.topics.read().map_err(|e| {
+            error!("{}", e);
+            BrokerError::new("Unable to get read lock on topics")
+        })?.is_empty(){
             return Err(BrokerError::new("Unable to get topic name from consume request"));
         }
         let mut simple_topics = Vec::new();
@@ -374,6 +377,10 @@ impl Broker {
                     error!("{}", e);
                     BrokerError::new("Unable to get produce request messages")
                 })?;
+                // Let's insert multiple messages here, instead of iterating through each one.
+                // let mut builder_message = Builder::new_default();
+                // builder_message.set_root(cap_msgs).unwrap();
+                // serialize::write_message_to_words(&builder_message);
                 let mut last_offset = 0;
                 for msg in cap_msgs {
                     let mut builder_message = Builder::new_default();

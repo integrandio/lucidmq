@@ -274,8 +274,9 @@ pub fn parse_request(conn_id: String, data: Vec<u8>) -> Result<Command, capnp::E
         Ok(message_envelope::ProduceRequest(envelope_produce_request)) => {
             let produce_request =
                 envelope_produce_request.expect("Unable to get produce request from envelope");
-            let _messages = produce_request
-                .get_messages()?;
+            // TODO: where does this Debug code belong to read messages?
+            // let _messages = produce_request
+            //     .get_messages()?;
             // for msg in _messages.into_iter() {
             //     info!("KEY: {:?}, VALUE: {:?}, TIMESTAMP: {}", msg.get_key().unwrap(), msg.get_value().unwrap(), msg.get_timestamp());
             // }

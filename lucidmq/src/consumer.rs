@@ -72,6 +72,7 @@ impl Consumer {
                         thread::sleep(ten_millis);
                         elapsed_duration = start_time.elapsed();
                     } else {
+                        error!("{}", err);
                         return Err(ConsumerError::new("Error when reading commitlong"));
                     }
                 }
@@ -196,7 +197,6 @@ mod consumer_tests {
 
         assert!(usize::try_from(consumer.consumer_group.offset.load(Ordering::SeqCst)).unwrap() == 0);
     }
-
 
     #[test]
     fn test_consumer_cg_initialization_many_messages() {

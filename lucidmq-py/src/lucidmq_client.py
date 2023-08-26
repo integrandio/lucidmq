@@ -2,7 +2,7 @@ import socket
 import cap_helper
 
 class LucidmqClient:
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int):
         self.host = host
         self.port = port
         self.tcp_stream = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -22,7 +22,7 @@ class LucidmqClient:
         self.tcp_stream.close()
 
 class Producer(LucidmqClient):
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int):
         super().__init__(host, port)
 
     def produce(self, topic_name: str, key: bytes, value: bytes) -> dict:
@@ -51,7 +51,7 @@ class Consumer(LucidmqClient):
         self.close_client()
 
 class TopicManager(LucidmqClient):
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: int):
         super().__init__(host, port)
     
     def create_topic(self, topic_name: str) -> dict:
