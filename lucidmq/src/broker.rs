@@ -5,7 +5,7 @@ use crate::cap_n_proto_helper::{
 use crate::lucid_schema_capnp::{consume_request, produce_request, topic_request};
 use crate::{
     consumer::Consumer, producer::Producer, topic::Topic, types::Command, types::SenderType,
-    RecieverType, topic::SimpleTopic
+    types::RecieverType, topic::SimpleTopic
 };
 use capnp::{
     message::{Builder, HeapAllocator, TypedReader},
@@ -75,7 +75,7 @@ impl Broker {
         }
     }
 
-    pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) {
+    pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) -> Result<(), BrokerError> {
         info!("Broker is running");
         while let Some(command) = reciever.recv().await {
             info!("message came through {:?}", command);
@@ -84,7 +84,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_topic(capmessage).await.unwrap();
+                    let data = self.handle_topic(capmessage).await?;
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -94,7 +94,7 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_producer(capmessage).await.unwrap();
+                    let data = self.handle_producer(capmessage).await?;
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
@@ -104,14 +104,14 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_consumer(capmessage).await.unwrap();
+                    let data = self.handle_consumer(capmessage).await?;
                     Command::Response {
                         conn_id: conn_id,
                         capmessagedata: data,
                     }
                 }
                 Command::Invalid { conn_id, error_message,  capmessage_data:_} => {
-                    let data = self.handle_invalid_message(&error_message).await.unwrap();
+                    let data = self.handle_invalid_message(&error_message).await?;
                     Command::Invalid {
                         conn_id: conn_id,
                         error_message: error_message,
@@ -120,7 +120,7 @@ impl Broker {
                 }
                 Command::Response { conn_id, capmessagedata:_ } => {
                     warn!("Response type unexected command");
-                    let data = self.handle_invalid_message("Response message is invalid").await.unwrap();
+                    let data = self.handle_invalid_message("Response message is invalid").await?;
                     Command::Invalid {
                         conn_id: conn_id,
                         error_message: "Response message is invalid".to_string(),
@@ -132,11 +132,13 @@ impl Broker {
             let res = sender.send(response_command).await;
             match res {
                 Err(e) => {
-                    error!("{}", e)
+                    error!("{}", e);
+                    return Err(BrokerError::new("Unable to send message"));
                 }
                 Ok(_) => {}
             }
         }
+        Ok(())
     }
 
     async fn handle_topic(
@@ -181,7 +183,10 @@ impl Broker {
                     self.base_directory.clone(),
                     100000, //100kb
                     1000000, //1mb
-                );
+                ).map_err(|err| {
+                    error!("{}", err);
+                    BrokerError::new("Unable to create topic directory")
+                })?;
                 fs::create_dir_all(&topic.directory).map_err(|e| {
                     error!("{}", e);
                     BrokerError::new("Unable to create topic directory")

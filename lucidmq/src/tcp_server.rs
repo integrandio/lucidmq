@@ -26,6 +26,7 @@ pub struct LucidTcpServer {
 }
 
 impl LucidTcpServer {
+    /// Initialize a new instance of the TCP server. Takes in a host and port to listen in on and sender and reciever channels to comunicate with the broker.
     pub fn new(
         host: &str,
         port: &str,
@@ -67,6 +68,8 @@ impl LucidTcpServer {
     }
 }
 
+/// Every incoming TCP connection create a connection string and adds an entry to the connection map(peermap), and then proceeds to handle the request.
+///  Once the connection is terminated, the connection entry in the map is removed
 async fn handle_connection(stream: TcpStream, peermap: Arc<PeerMap>, sender: SenderType) {
     let id: String = generate_connection_string();
     let (rx, tx) = stream.into_split();
@@ -76,6 +79,8 @@ async fn handle_connection(stream: TcpStream, peermap: Arc<PeerMap>, sender: Sen
     info!("Connection for {} terminatied", &id);
 }
 
+/// Handle request listens in on the open TCP stream. It has some logic for translating incoming bytes to message types.
+/// These are then sent along to the broker via the sender channel.
 async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType) {
     let mut buf;
     loop {
@@ -120,6 +125,8 @@ async fn handle_request(conn_id: String, recv: OwnedReadHalf, sender: SenderType
     }
 }
 
+/// Handles incoming responses from the Reciever channel(sent from the broker). 
+/// That message is then matched to a stream in the peermap, where the message data will be sent to.
 async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     while let Some(command) = reciever.recv().await {
         let id;
@@ -163,6 +170,7 @@ async fn handle_responses(mut reciever: RecieverType, peermap: Arc<PeerMap>) {
     }
 }
 
+/// Generates a new random connection string.
 fn generate_connection_string() -> String {
     let rand_string: String = thread_rng()
         .sample_iter(&Alphanumeric)

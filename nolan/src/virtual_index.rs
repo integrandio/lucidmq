@@ -82,7 +82,7 @@ impl VirtualIndex {
             Ok(())
     }
 
-    /// Load the index data from disk into memory
+    /// Load the index data from disk into memory, returing the total amount of entries in the index
     pub fn load_index(&mut self) -> Result<u16, IndexError> {
         let mut index_file = OpenOptions::new()
             .create(false)
@@ -130,11 +130,11 @@ impl VirtualIndex {
             })?;
             self.entries.push(decoded_entry);
         }
-        let value = u16::try_from(self.entries.len()).map_err(|e| {
+        let total_entries = u16::try_from(self.entries.len()).map_err(|e| {
             error!("{}", e);
-            IndexError::new("unable to convert usize to u16")
+            IndexError::new("unable to convert usize to u16 for entries length")
         })?;
-        Ok(value)
+        Ok(total_entries)
     }
 }
 

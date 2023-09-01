@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, error};
 use nolan::Commitlog;
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
@@ -6,7 +6,10 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::str;
 use std::{sync::atomic::AtomicU32, sync::Arc};
+use crate::lucidmq_errors::TopicError;
 
+/// Consumer groups are used by consumers as a way to denote what the last read message offset is in underlying commitlog.
+/// This allows for multiple consumers to read from the same topic, but consumer messages at their own pace.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct ConsumerGroup {
     pub name: String,
@@ -14,6 +17,7 @@ pub struct ConsumerGroup {
 }
 
 impl ConsumerGroup {
+    /// Initialize a new consumer group with just a name
     pub fn new(consumer_group_name: &str) -> ConsumerGroup {
         ConsumerGroup {
             name: consumer_group_name.to_string(),
@@ -29,6 +33,8 @@ impl ConsumerGroup {
     }
 }
 
+/// An abstraction layer built on top of the commitlog. 
+/// Each topic has meta data to rebuild the commitlog on startup and also stores the consumer groups associated with the topic.
 #[derive(Serialize, Deserialize)]
 #[serde(from = "DeserTopic")]
 pub struct Topic {
@@ -41,6 +47,7 @@ pub struct Topic {
     pub commitlog: Commitlog,
 }
 
+/// Deserialize a topic from bytes the topic struct
 #[derive(Deserialize)]
 struct DeserTopic {
     name: String,
@@ -70,12 +77,13 @@ impl From<DeserTopic> for Topic {
 }
 
 impl Topic {
+    /// Initializes a new topic instance and builds the commitlog with the parmeters passed in.
     pub fn new(
         topic_name: String,
         base_directory: String,
         max_segment_size: u64,
         max_topic_size: u64,
-    ) -> Topic {
+    ) -> Result<Topic, TopicError> {
         debug!("Creating a new topic {}", topic_name);
         let path = Path::new(&base_directory);
         // Generate a random directory name
@@ -92,9 +100,11 @@ impl Topic {
                 .expect("unable to convert to string"),
             max_segment_size,
             max_topic_size,
-        )
-        .expect("Unable to create commitlog for topic");
-        Topic {
+        ).map_err(|err| {
+            error!("{}", err);
+            TopicError::new("Unable to create commitlog for topic")
+        })?;
+        Ok(Topic {
             name: topic_name,
             directory: new_path
                 .to_str()
@@ -104,18 +114,20 @@ impl Topic {
             commitlog: new_commitlog,
             max_segment_size: max_segment_size,
             max_topic_size: max_topic_size,
-        }
+        })
     }
 
+    /// Given a consumer group name, return the matching consumer group from the consumer groups in the topic.
+    /// If it is not found: create a new consumer group, add it to the topics consumer groups and return it
     pub fn load_consumer_group(&mut self, consumer_group_name: &str) -> Arc<ConsumerGroup> {
         for group in &self.consumer_groups {
             if group.name == consumer_group_name {
                 return group.clone();
             }
         }
-        let new_gc = Arc::new(ConsumerGroup::new(consumer_group_name));
-        self.consumer_groups.push(new_gc.clone());
-        new_gc
+        let new_consumer_group = Arc::new(ConsumerGroup::new(consumer_group_name));
+        self.consumer_groups.push(new_consumer_group.clone());
+        new_consumer_group
     }
 
     // pub fn _new_topic_from_ref(topic_ref: &Topic) -> Topic {
@@ -132,6 +144,7 @@ impl Topic {
     //     }
     // }
 
+    /// Get all of the consumer group names and return a vec of the string representation
     pub fn get_consumer_groups(&self) -> Vec<String> {
         let cg_names = self
             .consumer_groups
@@ -147,6 +160,7 @@ impl Topic {
 }
 
 
+/// Struct used for sending a representation of a topic for messages
 pub struct SimpleTopic {
     pub topic_name: String,
     pub consumer_groups: Vec<String>

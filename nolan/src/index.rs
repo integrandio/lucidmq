@@ -11,15 +11,20 @@ use std::io::SeekFrom;
 /// An entry is metadata representation of an entry of the commitlog, it's used by the index to do quick lookups by offset.
 #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
 pub struct Entry {
+    /// starting point of the entry within the log file
     pub start: u32,
+    /// Total size of the entry stored in the log file
     pub total: u32,
 }
 
 /// Data structure that allows us to map segment entries to offsets for quick lookups. 
 /// This is stored on disk and on startup allows us to build our commitlog representation.
 pub struct Index {
+    ///The file name of the index on disc
     pub file_name: String,
+    /// Memory representation of the index entries
     entries: Vec<Entry>,
+    /// Actual file object that struct method modifies
     index_file: File,
 }
 

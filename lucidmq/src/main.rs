@@ -13,19 +13,14 @@ use std::env;
 use env_logger;
 use log::info;
 use tokio::sync::mpsc;
-use types::{RecieverType, SenderType};
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 pub async fn main() {
     env_logger::init();
     info!("Starting lucidmq");
     // Initialize all of our channels
-    let request_channel_sender: SenderType;
-    let request_channel_reciever: RecieverType;
-    (request_channel_sender, request_channel_reciever) = mpsc::channel(32);
-    let response_channel_sender: SenderType;
-    let response_channel_reciever: RecieverType;
-    (response_channel_sender, response_channel_reciever) = mpsc::channel(32);
+    let (request_channel_sender, request_channel_reciever) = mpsc::channel(32);
+    let (response_channel_sender, response_channel_reciever) = mpsc::channel(32);
 
     let host = get_env_variable("HOST", "127.0.0.1");
     let port = get_env_variable("PORT", "6969");
@@ -35,7 +30,7 @@ pub async fn main() {
     tokio::spawn(async move {
         broker
             .run(request_channel_reciever, response_channel_sender)
-            .await;
+            .await.expect("Broker error crash");
     });
     let server = tcp_server::LucidTcpServer::new(
         &host,

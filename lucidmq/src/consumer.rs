@@ -15,9 +15,7 @@ pub struct Consumer {
 }
 
 impl Consumer {
-    /**
-     * Initializes a new consumer
-     */
+    ///Initializes a new consumer
     pub fn new(
         consumer_topic: Arc<RwLock<Topic>>,
         new_consumer_group: Arc<ConsumerGroup>,
@@ -33,8 +31,8 @@ impl Consumer {
     }
 
     /**
-     * Reads from the commitlog for a set amount of time and returns a vector is messages when complete. 
-     * The offset where the starting read takes place is based off of the consumer group offset
+    Reads from the commitlog for a set amount of time and returns a vector is messages when complete. 
+    The offset where the starting read takes place is based off of the consumer group offset
      */
     pub fn poll(&mut self, timeout: u64) -> Result<Vec<Vec<u8>>, ConsumerError> {
         //Let's check if there are any new segments added.
@@ -85,8 +83,8 @@ impl Consumer {
     }
 
     /**
-     * Given a starting offset and a max_records to return, fetch will read all of the offsets and return the records until there is no more records
-     * or the max records limit has been hit.
+    Given a starting offset and a max_records to return, fetch will read all of the offsets and return the records until there is no more records
+    or the max records limit has been hit.
      */
     pub fn _fetch(&mut self, starting_offset: usize, max_records: usize) -> Vec<Vec<u8>> {
         let commitlog = &mut self.topic.write().expect("Unable to get topic from lock").commitlog;
@@ -113,8 +111,8 @@ impl Consumer {
     }
 
     /**
-     * Returns the topic that the consumer is consuming from.
-     */
+    Returns the topic that the consumer is consuming from.
+    */
     pub fn _get_topic(&self) -> String {
         self.topic.read().expect("Unable to get lock on consumer topic").name.clone()
     }
@@ -129,8 +127,8 @@ impl Consumer {
     }
 
     /**
-     Verifies and fixes if the consumer group is set to something that is older than the oldest offset in the commitlog.
-     If it is older, it will set it to the oldest possible offset.
+    Verifies and fixes if the consumer group is set to something that is older than the oldest offset in the commitlog.
+    If it is older, it will set it to the oldest possible offset.
      */
     fn consumer_group_initialize(&mut self) -> Result<(), ConsumerError>{
         let oldest_offset = self.topic.read().map_err(|e| {
@@ -152,7 +150,7 @@ impl Consumer {
     }
 
     /**
-     Updates the consumer_group offset counter by 1.
+    Updates the consumer_group offset counter by 1.
     */
     pub fn update_consumer_group_offset(&self) {
         self.consumer_group.offset.fetch_add(1, Ordering::SeqCst);
@@ -186,7 +184,7 @@ mod consumer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
         let bytes = "hello".as_bytes();
         topic.commitlog.append(bytes).expect("unable to append to commitlog");
 
@@ -210,7 +208,7 @@ mod consumer_tests {
             String::from(tmp_dir_string),
             40,
             200,
-        );
+        ).unwrap();
         // TODO: the math here is fuzzy, let's reason about why at 14 iterations of 20 bytes = 280 fits into a topic of 200 size and segment size of 40
         for _i in 0..15 {
             let bytes: [u8; 20] = [0; 20];
@@ -236,7 +234,7 @@ mod consumer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
         let bytes = "hello".as_bytes();
         topic.commitlog.append(bytes).expect("unable to append to commitlog");
         
@@ -262,7 +260,7 @@ mod consumer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
         let bytes = "hello".as_bytes();
         topic.commitlog.append(bytes).expect("unable to append to commitlog");
 
@@ -286,7 +284,7 @@ mod consumer_tests {
             String::from(tmp_dir_string),
             1000,
             10000,
-        );
+        ).unwrap();
         let mut msg_vec: Vec<Vec<u8>> = Vec::new();
         for i in 0..10 {
             let string_message = format!("hello{}", i);

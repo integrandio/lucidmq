@@ -1,7 +1,34 @@
 use std::error::Error;
 use std::fmt;
 
-//------------Serialization Error--------------------
+//------------Topic Error--------------------
+#[derive(Debug, PartialEq)]
+pub struct TopicError {
+    details: String,
+}
+
+impl TopicError {
+    pub fn new(msg: &str) -> TopicError {
+        TopicError {
+            details: msg.to_string(),
+        }
+    }
+}
+
+impl fmt::Display for TopicError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.details)
+    }
+}
+
+impl Error for TopicError {
+    fn description(&self) -> &str {
+        &self.details
+    }
+}
+
+
+//------------Protocol Error--------------------
 #[derive(Debug, PartialEq)]
 pub struct ProtocolError {
     details: String,

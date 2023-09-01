@@ -7,12 +7,14 @@ pub struct Producer {
 }
 
 impl Producer {
+    /// Initialize a new producer
     pub fn new(producer_topic: Arc<RwLock<Topic>>) -> Producer {
         Producer {
             topic: producer_topic,
         }
     }
 
+    /// Produce a single message to the commitlog, returning the offset in the commitlog where it's located
     pub fn produce_bytes(&mut self, bytes: &[u8]) -> Result<u16, ProducerError> {
         let written_offset = self.topic.write().unwrap().commitlog.append(&bytes).map_err(|e| {
             error!("{}", e);
@@ -55,7 +57,7 @@ mod producer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let mut producer = Producer::new(locked_topic.clone());
@@ -80,7 +82,7 @@ mod producer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let mut producer = Producer::new(locked_topic.clone());
@@ -103,7 +105,7 @@ mod producer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let mut producer = Producer::new(locked_topic.clone());
@@ -131,7 +133,7 @@ mod producer_tests {
             String::from(tmp_dir_string),
             10,
             100,
-        );
+        ).unwrap();
 
         let locked_topic = Arc::new(RwLock::new(topic));
         let mut producer = Producer::new(locked_topic.clone());

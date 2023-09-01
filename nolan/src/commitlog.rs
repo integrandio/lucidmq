@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use crate::utils;
 
 /// Commitlog is a struct that represents the logs stored on memory and on disc.
-/// At it's core, a commitlog is a directory that is made up of segments(logs and indexs)
+/// At it's core, a commitlog is a directory that is made up of segments(log and index files)
 /// that are stored within that directory.
 pub struct Commitlog {
     directory: String,
