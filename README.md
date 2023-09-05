@@ -26,11 +26,12 @@ LucidMQ is a streaming platform that focuses on providing low configuration and 
 
 The repository is a monorepo with everything LucidMQ related. In the future some of these librarys may be split into their own repository. `LucidMQ`, `LucidMQ-cli` and it's storage system `Nolan` are all written in Rust. `lucidmq-py` and `go-lucidmq` provides client libraries for Python and Go respectively. These clients also have their own integration tests suites to do regression testing and verify correctness.
 
-    ├── nolan            # The base library containing code for the commitlog
-    ├── lucidmq          # Lucidmq broker and server
-    ├── lucidmq-cli      # CLI client for interacting with lucidmq
-    ├── lucidmq-py       # Python client library and integration tests
-    └── protocol         # Cap N' Proto Definitions for the protocol use for client-server messaging
+    ├── nolan          # The base library containing code for the commitlog
+    ├── lucidmq        # Lucidmq broker and server
+    ├── lucidmq-cli    # CLI client for interacting with lucidmq
+    ├── lucidmq-py     # Python client library and integration tests
+    ├── go-lucidmq     # Go client library and integration tests
+    └── protocol       # Cap N' Proto definition protocol used by client-server comunication
 
 ---
 
@@ -44,11 +45,19 @@ Getting started is easy. Just run a server instance of LucidMQ and pick a client
 
 #### Requirements:
 1. Rust and Cargo Installed
+```
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
+See more details here
 - https://www.rust-lang.org/tools/install
 - https://doc.rust-lang.org/book/ch01-01-installation.html
 
 2. Cap N' Proto Installed
-- https://capnproto.org/install.html
+```bash
+brew install capnp
+```
+- See this info for more installation instructions https://capnproto.org/install.html
 
 See the [README in LucidMQ Directory](/lucidmq/README.md) for starting up the LucidMQ Server.
 
@@ -94,15 +103,6 @@ docker-compose -f docker-compose-go-integration.yml up --build --exit-code-from 
 ## Why do you need LucidMQ?
 
 LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundational libraries like Cap N' Proto and is built using Rust to take advantage of the memory safety promises. Secondly, this project aims to have world class documentation to spread knowledge about event streaming based systems.
-
-## How to Help?
-
-- Start running instances of LucidMQ and report bugs
-- Issues will be added and tagged for anyone looking to get their hands dirty
-- Assist with documentation
-- Write unit and integration tests
-
-Help realize the future of a low frustration ops experience of a message broker.
 
 ---
 
