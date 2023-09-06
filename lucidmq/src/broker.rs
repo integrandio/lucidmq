@@ -20,6 +20,7 @@ use std::sync::{Arc, RwLock};
 
 use crate::lucidmq_errors::BrokerError;
 
+/// The brain of the operation. It is responsible for data about topics and how to run correspoding commands on them.
 #[derive(Serialize, Deserialize, Clone)]
 #[serde(from = "DeserBroker")]
 pub struct Broker {
@@ -43,6 +44,7 @@ impl From<DeserBroker> for Broker {
 }
 
 impl Broker {
+    /// Create a new instance of a broker
     pub fn new(directory: String) -> Result<Broker, BrokerError> {
         debug!("Creating new instance of lucidmq in {}", directory);
         //Try to load from file
@@ -75,6 +77,8 @@ impl Broker {
         }
     }
 
+    /// Run starts a logic that loops and monitors the reciever channel which is being fed message commands by the server thread. 
+    /// This message is parsred into a rusulting action to do work on a resulting topic. 
     pub async fn run(mut self, mut reciever: RecieverType, sender: SenderType) -> Result<(), BrokerError> {
         info!("Broker is running");
         while let Some(command) = reciever.recv().await {
@@ -141,6 +145,7 @@ impl Broker {
         Ok(())
     }
 
+    /// Given a topic command type. Parse that further into topic command actions.
     async fn handle_topic(
         &mut self,
         topic_request_message: TypedReader<Builder<HeapAllocator>, topic_request::Owned>,
@@ -170,6 +175,8 @@ impl Broker {
         }
     }
 
+    /// Given a topic name, create a new topic
+    /// TODO: we need segment size and topic size to be configurable instead of hard coded.
     fn handle_create_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
@@ -200,12 +207,13 @@ impl Broker {
                         })?
                         .push(Arc::new(RwLock::new(topic)));
                 }
-                self.flush();
+                self.flush()?;
                 Ok(new_topic_response_create(topic_name, true))
             }
         }
     }
 
+    /// Given a topic name, write a descibe topic protocol message and return it's serialized byte representation.
     fn handle_describe_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
@@ -239,6 +247,7 @@ impl Broker {
         }
     }
 
+    /// Given a topic name, delete a topic if it exists and creat a delete topic protocol message and return it's serialized byte representation.
     fn handle_delete_topic(&mut self, topic_name: &str) -> Result<Vec<u8>, BrokerError> {
         let found_index = self.check_topics(topic_name);
         match found_index {
@@ -268,7 +277,7 @@ impl Broker {
                     error!("{}", e);
                     BrokerError::new("Unable to delete diretory of topic")
                 })?;
-                self.flush();
+                self.flush()?;
                 Ok(new_topic_response_delete(topic_name, true))
             }
             None => {
@@ -278,6 +287,7 @@ impl Broker {
         }
     }
 
+    /// Write a all topic protocol message and return it's serialized byte representation.
     fn handle_all_topic(&mut self) -> Result<Vec<u8>, BrokerError> {
         if self.topics.read().map_err(|e| {
             error!("{}", e);
@@ -440,26 +450,33 @@ impl Broker {
         }
     }
 
-    fn flush(&self) {
+    fn flush(&self) -> Result<(), BrokerError>{
         let lucidmq_file_path = Path::new(&self.base_directory).join("lucidmq.meta");
         info!(
             "Saving lucidmq state to file {}",
             lucidmq_file_path.to_string_lossy()
         );
-        // TODO: error handle this
         let encoded_data: Vec<u8> =
-            bincode::serialize(&self).expect("Unable to encode lucidmq metadata");
-        // TODO: error handle this
+            bincode::serialize(&self).map_err(|err| {
+                error!("{}", err);
+                BrokerError::new("Unable to encode lucidmq metadata")
+            })?;
         let mut file = OpenOptions::new()
-            .create(true)
-            .read(true)
+            .create(false)
+            .read(false)
             .write(true)
             .append(false)
             .open(lucidmq_file_path)
-            .expect("Unable to create and open file");
-        // TODO: error handle this
+            .map_err(|err| {
+                error!("{}", err);
+                BrokerError::new("Unable to open to lucidmq.meta file for writing")
+            })?;
         file.write_all(&encoded_data)
-            .expect("Unable to write to file");
+            .map_err(|err| {
+                error!("{}", err);
+                BrokerError::new("Unable to write to file lucidmq.meta file")
+            })?;
+        Ok(())
     }
 }
 

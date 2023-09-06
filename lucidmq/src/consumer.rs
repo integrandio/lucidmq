@@ -1,4 +1,4 @@
-use crate::lucidmq_errors::ConsumerError;
+use crate::lucidmq_errors::{ConsumerError, BrokerError};
 use crate::topic::{Topic, ConsumerGroup};
 use log::{error, info};
 use nolan::CommitlogError;
@@ -11,7 +11,7 @@ use std::time::{Duration, Instant};
 pub struct Consumer {
     topic: Arc<RwLock<Topic>>,
     consumer_group: Arc<ConsumerGroup>,
-    cb: Box<dyn Fn()>,
+    cb: Box<dyn Fn()->Result<(), BrokerError>>,
 }
 
 impl Consumer {
@@ -19,7 +19,7 @@ impl Consumer {
     pub fn new(
         consumer_topic: Arc<RwLock<Topic>>,
         new_consumer_group: Arc<ConsumerGroup>,
-        callback: Box<dyn Fn()>,
+        callback: Box<dyn Fn()->Result<(), BrokerError>>,
     ) -> Result<Consumer, ConsumerError> {
         let mut consumer = Consumer {
             topic: consumer_topic,
@@ -77,7 +77,7 @@ impl Consumer {
             };
         }
         if !records.is_empty() {
-            self.save_info();
+            self.save_info()?;
         }
         Ok(records)
     }
@@ -144,7 +144,7 @@ impl Consumer {
             self.consumer_group
                 .offset
                 .store(new_consumer_group_offset, Ordering::SeqCst);
-            self.save_info();
+            self.save_info()?;
         }
         Ok(())
     }
@@ -157,8 +157,12 @@ impl Consumer {
     }
     
     //save info calls a callback function which will sync and persist the state.
-    fn save_info(&self) {
-        (self.cb)()
+    fn save_info(&self) -> Result<(), ConsumerError> {
+        (self.cb)().map_err(|e| {
+            error!("{}", e);
+            ConsumerError::new("Unable to save topic from consumer")
+        })?;
+        Ok(())
     }
 }
 
@@ -166,11 +170,12 @@ impl Consumer {
 mod consumer_tests {
     use std::sync::atomic::Ordering;
     use std::sync::{Arc, RwLock};
+    use crate::lucidmq_errors::BrokerError;
     use crate::topic::{Topic, ConsumerGroup};
     use crate::consumer::Consumer;
     use tempdir::TempDir;
 
-    fn dummy_flush() {}
+    fn dummy_flush() -> Result<(), BrokerError>{Ok(())}
 
     #[test]
     fn test_consumer_cg_initialization() {
