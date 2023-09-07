@@ -2,8 +2,11 @@
 import sys
 import time
 import capnp
+import os
 
-sys.path.append('../protocol/schemas')
+current_dir = os.path.dirname(__file__)
+schema_dir = current_dir.replace("/lucidmq-py/src", "/protocol/schemas")
+sys.path.append(schema_dir)
 import lucid_schema_capnp
 
 # # class syntax

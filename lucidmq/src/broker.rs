@@ -88,31 +88,72 @@ impl Broker {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_topic(capmessage).await?;
-                    Command::Response {
-                        conn_id: conn_id,
-                        capmessagedata: data,
+                    let result_data = self.handle_topic(capmessage).await;
+                    match result_data {
+                        Ok(data) => {
+                            Command::Response {
+                                conn_id: conn_id,
+                                capmessagedata: data,
+                            }
+                        }
+                        Err(err) => {
+                            let error_string = err.to_string();
+                            let data = self.handle_invalid_message(&error_string).await?;
+                            Command::Invalid {
+                                conn_id: conn_id,
+                                error_message: error_string,
+                                capmessage_data: data
+                            }
+                        },
                     }
                 }
                 Command::ProduceRequest {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_producer(capmessage).await?;
-                    Command::Response {
-                        conn_id: conn_id,
-                        capmessagedata: data,
+                    let result_data = self.handle_producer(capmessage).await;
+                    match result_data {
+                        Ok(data) => {
+                            Command::Response {
+                                conn_id: conn_id,
+                                capmessagedata: data,
+                            }
+                        },
+                        Err(err) => {
+                            let error_string = err.to_string();
+                            let data = self.handle_invalid_message(&error_string).await?;
+                            Command::Invalid {
+                                conn_id: conn_id,
+                                error_message: error_string,
+                                capmessage_data: data
+                            }
+                        }
                     }
+
                 }
                 Command::ConsumeRequest {
                     conn_id,
                     capmessage,
                 } => {
-                    let data = self.handle_consumer(capmessage).await?;
-                    Command::Response {
-                        conn_id: conn_id,
-                        capmessagedata: data,
+                    let result_data = self.handle_consumer(capmessage).await;
+                    match result_data {
+                        Ok(data) =>{
+                            Command::Response {
+                                conn_id: conn_id,
+                                capmessagedata: data,
+                            }
+                        }                     
+                        Err(err) => {
+                            let error_string = err.to_string();
+                            let data = self.handle_invalid_message(&error_string).await?;
+                            Command::Invalid {
+                                conn_id: conn_id,
+                                error_message: error_string,
+                                capmessage_data: data
+                            }
+                        },
                     }
+
                 }
                 Command::Invalid { conn_id, error_message,  capmessage_data:_} => {
                     let data = self.handle_invalid_message(&error_message).await?;
@@ -462,7 +503,7 @@ impl Broker {
                 BrokerError::new("Unable to encode lucidmq metadata")
             })?;
         let mut file = OpenOptions::new()
-            .create(false)
+            .create(true)
             .read(false)
             .write(true)
             .append(false)
