@@ -3,7 +3,7 @@
     
 ![LucidMQ](https://user-images.githubusercontent.com/25624274/218341069-514ac1ec-0a06-4260-a229-c047dd531ac2.png)
 
-**Simple-Ops Event Streaming. Alternative to Kafka and Rabbitmq. Build your real time applications without the headache of ops overhead.**
+**Simple-Ops Event Streaming. Build your real time applications without the headache of ops overhead.**
 
 <a href="https://lucidmq.com/docs/">Documentation</a> •
 <a href="https://lucidmq.com">Blog</a> 
@@ -20,7 +20,7 @@
 
 ## What is LucidMQ
 
-LucidMQ is a streaming platform that focuses on providing low configuration and low operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. Spend less time worring about operating your streaming platform cluster and spend more time building your real time applications.
+LucidMQ is a streaming platform that focuses on providing low configuration and low operation overhead along with speed. It enables the creation of stream or queue based applications by providing a rock solid foundation and simple API's. It is made up of multiple modules that are each documented in their own subdirectory.
 
 ### Repo Structure
 
@@ -37,7 +37,7 @@ The repository is a monorepo with everything LucidMQ related. In the future some
 
 ## Getting Started
 
-Getting started is easy. Just run a server instance of LucidMQ and pick a client to interact with your server(CLI and Python Clients avaliable for now).
+Getting started is easy. Just run a server instance of LucidMQ(either from soure or a docker container) and pick a client to interact with your server(CLI and Python Clients avaliable for now).
 
 ### How to Run LucidMQ
 
@@ -68,18 +68,18 @@ For a client to interact with your LucidMQ server instance, utilize the LucidMQ-
 
 1. Build the base Docker image
 ```
-docker build -t images/lucidmq-base .
+docker build -f images/RustBase.Dockerfile -t registry.nocaply.com/rust-base:latest .
 ```
 
 2. Build the docker images locally:
 
 ```
-docker build -f images/Lucidmq.Dockerfile -t lucidmq .
+docker build -f images/Lucidmq.Dockerfile -t lucidmq:latest .
 ```
 
 2. Run the Docker Container
 ```
-docker run -it -p 6969:6969 lucidmq
+docker run -it -p 6969:6969 lucidmq:latest
 ```
 
 #### Running the integration tests
@@ -99,10 +99,6 @@ Run the golang integration tests using the following command:
 ```
 docker-compose -f docker-compose-go-integration.yml up --build --exit-code-from test-runner
 ```
-
-## Why do you need LucidMQ?
-
-LucidMQ's main goal is to be the easiest message/event broker to run and maintain in production environments. This project achieves this by utilizing rock solid foundational libraries like Cap N' Proto and is built using Rust to take advantage of the memory safety promises. Secondly, this project aims to have world class documentation to spread knowledge about event streaming based systems.
 
 ---
 
