@@ -5,5 +5,4 @@ members = [
     "lucidmq",
     "pylucidmq",
     "lucidmq-cli",
-    "node-lucidmq"
 ]

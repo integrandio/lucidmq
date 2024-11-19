@@ -1,4 +1,18 @@
-# LucidMQ
+<div align="center">
+<p align="center">
+    
+![LucidMQ](https://user-images.githubusercontent.com/25624274/218341069-514ac1ec-0a06-4260-a229-c047dd531ac2.png)
+
+**In-process Event Streaming. Build your real time applications without the headache of ops overhead.**
+
+<a href="https://lucidmq.com/docs/">Documentation</a> •
+<a href="https://lucidmq.com">Blog</a> 
+    
+![CI](https://github.com/lucidmq/lucidmq/actions/workflows/lucidmq.yml/badge.svg)
+![MIT License](https://img.shields.io/badge/License-MIT-success)
+
+</p>
+</div>
 
 > :warning: **This project is in Alpha Stage**: Expect breaking changes
 
@@ -6,7 +20,7 @@
 
 ## What is LucidMQ
 
-LucidMQ is a Rust-language library that implements a small, fast, self-contained, high-reliability, full-featured, streaming engine. Unlike most other streaming services, LucidMQ does not have a separate server process. LucidMQ reads and writes directly to ordinary disk files. Think of LucidMQ not as a replacement for Kafka or RabbitMQ but as a replacement for `fopen()` or trying to stream data via SQLite.
+LucidMQ is a Rust-language library that implements a small, fast, self-contained, high-reliability, full-featured, streaming engine or messages queue. Unlike most other streaming services/message queues, LucidMQ does not have a separate server process. LucidMQ reads and writes directly to ordinary disk files. Think of LucidMQ not as a replacement for Kafka or RabbitMQ but as a replacement for `fopen()` or trying to stream data via SQLite.
 
 ---
 
@@ -86,8 +100,7 @@ The repo is made up of a base library written in Rust and other client libraries
     ├── nolan            # The base library containing code for the commitlog
     ├── lucidmq-cli      # CLI library for running LucidMQ as an executable
     ├── lucidmq          # Rust Client Library
-    ├── pylucidmq        # Python Client Library
-    └── node-lucidmq     # Node Client Library
+    └── pylucidmq        # Python Client Library
 
 ---
 
@@ -95,38 +108,13 @@ The repo is made up of a base library written in Rust and other client libraries
 
 ### Embedded devices and the internet of things
 
-Because an LucidMQ database requires no administration, it works well in devices that must operate without expert human support. LucidMQ is a good fit for use in cellphones, set-top boxes, televisions, game consoles, cameras, watches, kitchen appliances, thermostats, automobiles, machine tools, airplanes, remote sensors, drones, medical devices, and robots: the "Internet of Things".
+An LucidMQ instance requires no administration, it works well in projects and devices that don't want or need operations staff to manage it. LucidMQ is a good fit for use in cellphones, set-top boxes, televisions, game consoles, cameras, watches, kitchen appliances, thermostats, automobiles, machine tools, airplanes, remote sensors, drones, medical devices, and robots: the "Internet of Things".
 
-Client/server database engines are designed to live inside a lovingly-attended datacenter at the core of the network. LucidMQ works there too, but LucidMQ also thrives at the edge of the network, fending for itself while providing fast and reliable data services to applications that would otherwise have dodgy connectivity.
+Client/server message queue engines are designed to live inside a lovingly-attended datacenter at the core of the network. LucidMQ works there too, but LucidMQ also thrives at the edge of the network, fending for itself while providing fast and reliable data services to applications that would otherwise have dodgy connectivity.
 
 ### Quickly Prototyping or Learning Event Streaming
 
 There are many benefits to using event streaming and architectures that use such paradigms. One issue that LucidMQ aims to solve vs other server-client solutions, is quick prototyping and creating environments to learn. Standing up Kafka and RabbitMQ for such small purposes can seem cumbersome and intimidating to some. With an embedded approach to the stream, one can quickly build out the PoC or learn the fundamentals before porting the solution over to a distributed model when the time calls for it.
-
-### Developing Distributed Systems
-
-Persisting state to a distributed system. There are many benefits to this approach, including improved performance, reduced cost and complexity, and improved reliability.
-
----
-
-## What's Next?
-
-- [ ] Implement tests
-
-- [ ] Publish node.js/npm library
-
-- [ ] Update CLI tool to have more functionality
-
-- [ ] Update documentation
-
-### LucidMQ design
-
-```txt
---> Base Directory where the topics and commitlogs live.
---> Topics which is a mapping to the commitlog directory
---> Consumer Groups
---> Persisting this information on disk in the case of a crash or if other processes need to interact.
-```
 
 ---
 

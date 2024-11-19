@@ -12,7 +12,7 @@ use producer::Producer;
 
 /// A Python module implemented in Rust.
 #[pymodule]
-fn pylucidmq(_py: Python, m: &PyModule) -> PyResult<()> {
+fn pylucidmq(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<Message>()?;
     m.add_class::<Producer>()?;
     m.add_class::<Consumer>()?;

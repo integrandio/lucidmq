@@ -1,7 +1,7 @@
 use crate::lucidmq::ConsumerGroup;
 use crate::message::Message;
 use log::info;
-use nolan::Commitlog;
+use nolan::{Commitlog, CommitlogError};
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::thread;
@@ -26,7 +26,7 @@ impl Consumer {
         max_segment_size_bytes: u64,
         max_commitlog_size_bytes: u64,
     ) -> Consumer {
-        let cl = Commitlog::new(directory, max_segment_size_bytes, max_commitlog_size_bytes);
+        let cl = Commitlog::new(&directory, max_segment_size_bytes, max_commitlog_size_bytes).expect("Unhandled exception");
         let mut consumer = Consumer {
             topic: topic_name,
             commitlog: cl,
@@ -61,7 +61,8 @@ impl Consumer {
                     self.update_consumer_group_offset();
                 }
                 Err(err) => {
-                    if err == "Offset does not exist in the commitlog" {
+                    let offset_dne_error = CommitlogError::new("Offset does not exist in the commitlog");
+                    if err == offset_dne_error {
                         self.commitlog.reload_segments();
                         thread::sleep(ten_millis);
                         elapsed_duration = start_time.elapsed();
@@ -93,7 +94,8 @@ impl Consumer {
                     offset += 1;
                 }
                 Err(err) => {
-                    if err == "Offset does not exist in the commitlog" {
+                    let offset_dne_error = CommitlogError::new("Offset does not exist in the commitlog");
+                    if err == offset_dne_error {
                         break;
                     } else {
                         panic!("Unexpected error found")

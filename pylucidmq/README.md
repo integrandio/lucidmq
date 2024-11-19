@@ -4,6 +4,25 @@
 
 This is the python implementation and client library using LucidMQ
 
+
+## Create a New Development environement
+
+1. Create python virtual environment
+```
+python3 -m venv env
+```
+
+2. Install Dependencies
+Make sure to activate your virtual environment
+```
+pip install maturin
+```
+
+3. Install pylucidmq library in project
+``` 
+maturin develop
+```
+
 ### Disclaimer: only works on macOS and linux at the moment
 
 ## Installation
